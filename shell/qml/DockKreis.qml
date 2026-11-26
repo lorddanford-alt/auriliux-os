@@ -51,7 +51,7 @@ Item {
             ColorAnimation { to: Theme.gold_a(0.45); duration: 350 }
         }
         Image {
-            visible: k.art !== "home"
+            visible: k.art === "programm"
             anchors.centerIn: parent
             width: parent.width * 0.74; height: width
             sourceSize: Qt.size(128, 128)
@@ -59,19 +59,26 @@ Item {
             opacity: k.minimiert ? 0.55 : 1
             smooth: true; mipmap: true
         }
-        // Home-Symbol (Haus)
+        // eigene Goldsymbole: Haus (Home), Ordner, Papierkorb
         Canvas {
-            visible: k.art === "home"
+            visible: k.art === "home" || k.art === "ordner" || k.art === "papierkorb"
             width: 74; height: 74
             anchors.centerIn: parent
             scale: kreis.width / 74 * 0.5
-            property color farbe: k.homeAn ? Theme.bernstein : Theme.akzent
+            property color farbe: k.art === "home" && k.homeAn ? Theme.bernstein : Theme.akzent
+            property string form: k.art
             onFarbeChanged: requestPaint()
+            onFormChanged: requestPaint()
             onPaint: {
                 const g = getContext("2d"), s = width / 24
                 g.reset(); g.scale(s, s)
                 g.strokeStyle = farbe; g.lineWidth = 1.8; g.lineCap = "round"; g.lineJoin = "round"
-                for (const d of ["M3.5 11.5L12 4.5l8.5 7", "M6 10v9.5h12V10", "M10 19.5v-5.5h4v5.5"]) { g.beginPath(); g.path = d; g.stroke() }
+                const formen = {
+                    home: ["M3.5 11.5L12 4.5l8.5 7", "M6 10v9.5h12V10", "M10 19.5v-5.5h4v5.5"],
+                    ordner: ["M3 7.5a1.5 1.5 0 0 1 1.5-1.5h4.2l2 2.2h8.8a1.5 1.5 0 0 1 1.5 1.5v8.8a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5z", "M3 10.5h18"],
+                    papierkorb: ["M4.5 6.5h15", "M9.5 6.5V4.5h5v2", "M6.5 6.5l1 13h9l1-13", "M10 10v6.5", "M14 10v6.5"]
+                }
+                for (const d of (formen[form] || formen.home)) { g.beginPath(); g.path = d; g.stroke() }
             }
         }
     }

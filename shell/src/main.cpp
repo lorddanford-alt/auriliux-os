@@ -33,6 +33,7 @@ int main(int argc, char *argv[])
 
     // Symbole: Programme bringen ihre Symbole im Thema „hicolor“ mit
     if (QIcon::themeName().isEmpty()) QIcon::setThemeName(QStringLiteral("hicolor"));
+    QIcon::setFallbackThemeName(QStringLiteral("Adwaita"));
 
     QQmlApplicationEngine engine;
     engine.addImageProvider(QStringLiteral("symbol"), new SymbolBild);
