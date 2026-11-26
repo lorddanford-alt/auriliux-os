@@ -6,7 +6,7 @@ export XDG_RUNTIME_DIR=/tmp/xdg; mkdir -p -m 700 "$XDG_RUNTIME_DIR"
 export WLR_BACKENDS=headless WLR_RENDERER=pixman WLR_LIBINPUT_NO_DEVICES=1 WLR_HEADLESS_OUTPUTS=1
 export QT_QUICK_BACKEND=software LANG=C.UTF-8 XDG_SESSION_TYPE=wayland
 export QT_FORCE_STDERR_LOGGING=1 AURILIUX_DIAGNOSE=1
-mkdir -p /tmp/leer
+mkdir -p /tmp/leer && cp /etc/xdg/labwc/rc.xml /tmp/leer/
 cat > /tmp/innen.sh <<'INNEN'
 #!/bin/bash
 {

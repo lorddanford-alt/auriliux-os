@@ -37,49 +37,41 @@ Item {
             g.fillStyle = vi; g.fillRect(0, 0, W, H)
         }
     }
-    // Lichtwelle: ein schräges Band, in dem die Waben hell aufleuchten
-    Item {
-        id: band
-        readonly property real diag: Math.sqrt(hg.width * hg.width + hg.height * hg.height)
-        width: 230; height: diag * 1.4
-        x: -width; y: (hg.height - height) / 2
-        rotation: 45
-        transformOrigin: Item.Center
-        clip: true
-        opacity: 0
-        Canvas {
-            id: hell
-            // Gegendrehung, damit die hellen Waben genau auf den gedimmten liegen
-            width: hg.width; height: hg.height
-            x: -band.x + 0; y: -band.y
-            transform: Rotation { origin.x: band.x + band.width / 2 - 0; origin.y: band.y + band.height / 2; angle: -45 }
-            onWidthChanged: requestPaint(); onHeightChanged: requestPaint()
-            onPaint: {
-                const g = getContext("2d")
-                g.reset()
-                hg.waben(g, width, height, (x, y) => {
-                    hg.sechseck(g, x, y, hg.r - 1.6)
-                    g.strokeStyle = "rgba(230,189,87,0.08)"; g.lineWidth = 5; g.stroke()
-                    g.strokeStyle = "rgba(246,220,140,0.5)"; g.lineWidth = 1.1; g.stroke()
-                })
-            }
-        }
-        Rectangle {        // weicher Lichtschein im Band
-            anchors.fill: parent
-            gradient: Gradient {
-                orientation: Gradient.Horizontal
-                GradientStop { position: 0; color: "transparent" }
-                GradientStop { position: 0.5; color: Qt.rgba(230/255, 189/255, 87/255, 0.035) }
-                GradientStop { position: 1; color: "transparent" }
+    // Lichtwelle: schräge Bänder, in denen die Waben aufleuchten – mehrere Schichten übereinander
+    // (außen breit und schwach, innen schmal und stärker) ergeben einen weichen Verlauf wie am Mac
+    property real wellenX: -400
+    Repeater {
+        model: [{ b: 360, o: 0.10 }, { b: 230, o: 0.14 }, { b: 130, o: 0.18 }, { b: 60, o: 0.22 }]
+        delegate: Item {
+            id: band
+            required property var modelData
+            readonly property real diag: Math.sqrt(hg.width * hg.width + hg.height * hg.height)
+            width: modelData.b; height: diag * 1.5
+            x: hg.wellenX - width / 2; y: (hg.height - height) / 2
+            rotation: 45
+            clip: true
+            Canvas {
+                width: hg.width; height: hg.height
+                x: -band.x; y: -band.y
+                opacity: band.modelData.o
+                transform: Rotation { origin.x: band.x + band.width / 2; origin.y: band.y + band.height / 2; angle: -45 }
+                onWidthChanged: requestPaint(); onHeightChanged: requestPaint()
+                onPaint: {
+                    const g = getContext("2d")
+                    g.reset()
+                    hg.waben(g, width, height, (x, y) => {
+                        hg.sechseck(g, x, y, hg.r - 1.6)
+                        g.strokeStyle = "rgba(230,189,87,0.5)"; g.lineWidth = 4; g.stroke()
+                        g.strokeStyle = "rgba(246,220,140,1)"; g.lineWidth = 1.1; g.stroke()
+                    })
+                }
             }
         }
     }
     SequentialAnimation {
         running: hg.visible && hg.width > 0
         loops: Animation.Infinite
-        PropertyAction { target: band; property: "opacity"; value: 0.9 }
-        NumberAnimation { target: band; property: "x"; from: hg.width + band.width; to: -band.width * 2; duration: 12000 }
-        PropertyAction { target: band; property: "opacity"; value: 0 }
+        NumberAnimation { target: hg; property: "wellenX"; from: hg.width + 400; to: -400; duration: 12000 }
         PauseAnimation { duration: 2500 }
     }
 }
