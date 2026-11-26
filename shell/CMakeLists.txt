@@ -10,21 +10,21 @@ qt_standard_project_setup(REQUIRES 6.5)
 
 qt_add_executable(auriliux-shell src/main.cpp)
 
+set(AURILIUX_QML
+    qml/Theme.qml qml/Goldleiste.qml qml/AuriliuxMenue.qml qml/Menuepunkt.qml qml/Messbalken.qml
+    qml/Trenner.qml qml/WlanSymbol.qml qml/AkkuSymbol.qml qml/Raute.qml)
 set_source_files_properties(qml/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
+# Dateien liegen im Ordner qml/, sollen im Modul aber direkt neben qmldir liegen – sonst sehen sie
+# die eigenen Typen (Theme, System, Ebene) nicht
+foreach(datei IN LISTS AURILIUX_QML)
+    get_filename_component(name "${datei}" NAME)
+    set_source_files_properties(${datei} PROPERTIES QT_RESOURCE_ALIAS ${name})
+endforeach()
 qt_add_qml_module(auriliux-shell
     URI Auriliux
     VERSION 1.0
     SOURCES src/system.h src/system.cpp src/ebene.h src/ebene.cpp
-    QML_FILES
-        qml/Theme.qml
-        qml/Goldleiste.qml
-        qml/AuriliuxMenue.qml
-        qml/Menuepunkt.qml
-        qml/Messbalken.qml
-        qml/Trenner.qml
-        qml/WlanSymbol.qml
-        qml/AkkuSymbol.qml
-        qml/Raute.qml
+    QML_FILES ${AURILIUX_QML}
 )
 
 target_include_directories(auriliux-shell PRIVATE src)
