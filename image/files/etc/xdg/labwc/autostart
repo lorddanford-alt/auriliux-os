@@ -1,3 +1,4 @@
 # Auriliux-Schreibtisch
 swaybg -c '#000000' >/dev/null 2>&1 &
 auriliux-shell goldleiste >/dev/null 2>&1 &
+auriliux-shell golddock >/dev/null 2>&1 &

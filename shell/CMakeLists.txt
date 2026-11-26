@@ -13,7 +13,7 @@ qt_add_executable(auriliux-shell src/main.cpp)
 set(AURILIUX_QML
     qml/Theme.qml qml/Goldleiste.qml qml/AuriliuxMenue.qml qml/Menuepunkt.qml qml/Segmente.qml
     qml/Trenner.qml qml/WlanSymbol.qml qml/AkkuSymbol.qml qml/Raute.qml qml/Modul.qml qml/Lupe.qml
-    qml/KiStern.qml qml/AppSuche.qml)
+    qml/KiStern.qml qml/AppSuche.qml qml/DockKreis.qml qml/Golddock.qml)
 set_source_files_properties(qml/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 # Dateien liegen im Ordner qml/, sollen im Modul aber direkt neben qmldir liegen – sonst sehen sie
 # die eigenen Typen (Theme, System, Ebene) nicht

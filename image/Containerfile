@@ -39,7 +39,7 @@ RUN dnf -y install --setopt=install_weak_deps=False \
         snapper btrfs-progs zram-generator \
         lm_sensors brightnessctl \
         google-chrome-stable \
-        google-noto-sans-fonts google-noto-sans-mono-fonts \
+        google-noto-sans-fonts google-noto-sans-mono-fonts adwaita-icon-theme \
         git curl unzip cpio \
     && dnf clean all
 
@@ -73,6 +73,10 @@ RUN mkdir -p /usr/share/fonts/auriliux \
     && curl -fsSL -o /usr/share/fonts/auriliux/OFL-Cinzel.txt \
        "https://raw.githubusercontent.com/google/fonts/3dd78844021e948ceb633d1dcee3f7885561b5d9/ofl/cinzel/OFL.txt" \
     && fc-cache -f /usr/share/fonts/auriliux
+
+# Hilfseinträge des Terminals nicht in der App-Suche zeigen
+RUN for d in footclient foot-server; do f=/usr/share/applications/$d.desktop; \
+        [ -f "$f" ] && sed -i 's/^\[Desktop Entry\]$/[Desktop Entry]\nNoDisplay=true/' "$f"; done; true
 
 # ── Name und Einstellungen ──────────────────────────────────────────────────────
 RUN sed -i 's/^PRETTY_NAME=.*/PRETTY_NAME="Auriliux OS (Fedora 45)"/' /usr/lib/os-release \

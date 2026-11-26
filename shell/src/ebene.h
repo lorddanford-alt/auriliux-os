@@ -23,4 +23,7 @@ public:
     Q_INVOKABLE void einrichten(QQuickWindow *fenster, int kanten, int schicht, int zone, int tastatur,
                                 int abstandOben = 0, int abstandRechts = 0, int abstandUnten = 0, int abstandLinks = 0,
                                 const QString &name = QString());
+    /// Nur diese Rechtecke nehmen Maus-Klicks an – alles andere geht durch zu den Fenstern dahinter.
+    /// bereiche: Liste von {x, y, w, h}; leere Liste = ganzes Fenster
+    Q_INVOKABLE void klickBereich(QQuickWindow *fenster, const QVariantList &bereiche);
 };

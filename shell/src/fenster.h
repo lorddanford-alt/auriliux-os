@@ -3,6 +3,7 @@
 #pragma once
 #include <QAbstractListModel>
 #include <QList>
+#include <QVariantList>
 #include <QtQml/qqmlregistration.h>
 
 class FensterManager;
@@ -44,6 +45,14 @@ public:
     Q_INVOKABLE void aktivesSchliessen();
     /// app_ids aller offenen Fenster (für das Dock: läuft / läuft nicht)
     Q_INVOKABLE QStringList laufendeProgramme() const;
+    /// Fenster eines Programms: [{zeile, titel, minimiert, aktiv}]
+    Q_INVOKABLE QVariantList fensterVon(const QString &appId) const;
+    /// sind alle Fenster dieses Programms minimiert?
+    Q_INVOKABLE bool alleMinimiert(const QString &appId) const;
+    Q_INVOKABLE void programmMinimieren(const QString &appId);
+    Q_INVOKABLE void programmSchliessen(const QString &appId);
+    /// ist der Home-Modus (alles minimiert) gerade aktiv?
+    Q_INVOKABLE bool homeAktiv() const { return !m_vonHomeMinimiert.isEmpty(); }
 
 signals:
     void aktivGeaendert();

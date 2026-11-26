@@ -19,10 +19,11 @@ int main(int argc, char *argv[])
 
     const QHash<QString, QString> teile{
         {QStringLiteral("goldleiste"), QStringLiteral("Goldleiste")},
+        {QStringLiteral("golddock"), QStringLiteral("Golddock")},
     };
     const QString teil = argc > 1 ? QString::fromLocal8Bit(argv[1]).toLower() : QStringLiteral("goldleiste");
     if (!teile.contains(teil)) {
-        qCritical("Unbekannter Teil: %s (bekannt: goldleiste)", qPrintable(teil));
+        qCritical("Unbekannter Teil: %s (bekannt: goldleiste, golddock)", qPrintable(teil));
         return 2;
     }
 

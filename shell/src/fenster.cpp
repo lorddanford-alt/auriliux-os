@@ -168,6 +168,7 @@ void Fenster::alleMinimieren()
     for (auto *t : std::as_const(m_liste)) {
         if (!t->minimiert) { t->set_minimized(); m_vonHomeMinimiert.append(t); }
     }
+    emit aktivGeaendert();
 }
 
 void Fenster::alleZurueck()
@@ -175,6 +176,7 @@ void Fenster::alleZurueck()
     auto *s = sitz();
     for (auto *t : std::as_const(m_vonHomeMinimiert)) { t->unset_minimized(); if (s) t->activate(s); }
     m_vonHomeMinimiert.clear();
+    emit aktivGeaendert();
 }
 
 void Fenster::aktivesSchliessen() { for (auto *t : std::as_const(m_liste)) if (t->aktiv) { t->close(); return; } }
@@ -185,5 +187,34 @@ QStringList Fenster::laufendeProgramme() const
     for (auto *t : m_liste) if (!l.contains(t->appId)) l << t->appId;
     return l;
 }
+
+static bool gleich(const QString &a, const QString &b) { return a.compare(b, Qt::CaseInsensitive) == 0; }
+
+QVariantList Fenster::fensterVon(const QString &appId) const
+{
+    QVariantList l;
+    for (int i = 0; i < m_liste.size(); ++i) {
+        const Toplevel *t = m_liste.at(i);
+        if (!gleich(t->appId, appId)) continue;
+        QVariantMap m;
+        m.insert("zeile", i); m.insert("titel", t->titel); m.insert("minimiert", t->minimiert); m.insert("aktiv", t->aktiv);
+        l << m;
+    }
+    return l;
+}
+
+bool Fenster::alleMinimiert(const QString &appId) const
+{
+    bool irgendeins = false;
+    for (const Toplevel *t : m_liste) {
+        if (!gleich(t->appId, appId)) continue;
+        irgendeins = true;
+        if (!t->minimiert) return false;
+    }
+    return irgendeins;
+}
+
+void Fenster::programmMinimieren(const QString &appId) { for (auto *t : std::as_const(m_liste)) if (gleich(t->appId, appId)) t->set_minimized(); }
+void Fenster::programmSchliessen(const QString &appId) { for (auto *t : std::as_const(m_liste)) if (gleich(t->appId, appId)) t->close(); }
 
 #include "fenster.moc"

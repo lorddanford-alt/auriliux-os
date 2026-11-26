@@ -25,7 +25,15 @@ sleep 6; grim /aus/2-menue.png
 kill $P; sleep 1
 AURILIUX_VORSCHAU=suche auriliux-shell goldleiste > /aus/suche.log 2>&1 & P=$!
 sleep 6; grim /aus/3-suche.png
-kill $P
+kill $P; sleep 1
+# Golddock: ein Programm (Terminal) läuft, damit Punkt/Balken sichtbar sind
+foot >/dev/null 2>&1 & F=$!; sleep 2
+AURILIUX_VORSCHAU=dock auriliux-shell golddock > /aus/dock.log 2>&1 & P=$!
+sleep 6; grim /aus/4-dock.png
+kill $P; sleep 1
+AURILIUX_VORSCHAU=dockmenue auriliux-shell golddock > /aus/dockmenue.log 2>&1 & P=$!
+sleep 6; grim /aus/5-dockmenue.png
+kill $P $F
 labwc --exit
 INNEN
 chmod +x /tmp/innen.sh

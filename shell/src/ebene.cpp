@@ -1,6 +1,8 @@
 #include "ebene.h"
 #include <QQuickWindow>
 #include <QMargins>
+#include <QRegion>
+#include <QVariantMap>
 #include <LayerShellQt/Window>
 #include <cstdio>
 
@@ -25,4 +27,16 @@ void Ebene::einrichten(QQuickWindow *fenster, int kanten, int schicht, int zone,
     lw->setScope(name.isEmpty() ? QStringLiteral("auriliux") : name);
     if (qEnvironmentVariableIsSet("AURILIUX_DIAGNOSE"))
         fprintf(stderr, "Ebene eingerichtet: %s, Größe %dx%d\n", qPrintable(name), fenster->width(), fenster->height());
+}
+
+void Ebene::klickBereich(QQuickWindow *fenster, const QVariantList &bereiche)
+{
+    if (!fenster) return;
+    QRegion r;
+    for (const QVariant &v : bereiche) {
+        const QVariantMap m = v.toMap();
+        r += QRect(qRound(m.value("x").toReal()), qRound(m.value("y").toReal()),
+                   qMax(1, qRound(m.value("w").toReal())), qMax(1, qRound(m.value("h").toReal())));
+    }
+    fenster->setMask(r);
 }
