@@ -1,4 +1,17 @@
-# Auriliux OS – Rezept für das Systemabbild
+# Auriliux OS – Rezept für das Systemabbild (Bau aus dem Hauptordner: podman build -f image/Containerfile .)
+
+# ── Stufe 1: eigene Programme kompilieren (Goldleiste usw.) ────────────────────
+FROM quay.io/fedora/fedora:45 AS bau
+RUN dnf -y install --setopt=install_weak_deps=False \
+        cmake ninja-build gcc-c++ qt6-qtbase-devel qt6-qtbase-private-devel qt6-qtdeclarative-devel \
+        layer-shell-qt-devel \
+    && dnf clean all
+COPY shell /quelle/shell
+RUN cmake -S /quelle/shell -B /bauordner -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr \
+    && cmake --build /bauordner \
+    && DESTDIR=/ausgabe cmake --install /bauordner
+
+# ── Stufe 2: das eigentliche System ───────────────────────────────────────────
 # Basis: Fedora 45 bootc (unveränderliches System, Updates als ganzes Abbild, Rückweg zum vorherigen Stand)
 FROM quay.io/fedora/fedora-bootc:45
 
@@ -6,7 +19,7 @@ LABEL org.opencontainers.image.title="Auriliux OS" \
       org.opencontainers.image.description="Schlankes, sicheres System für das MacBook Pro 12,1 im Auriliux-Gold-Stil"
 
 # ── Paketquellen: Google Chrome, Kameratreiber (FaceTime HD) ─────────────────
-COPY repos/*.repo /etc/yum.repos.d/
+COPY image/repos/*.repo /etc/yum.repos.d/
 
 # ── Grundsystem ──────────────────────────────────────────────────────────────
 # Oberfläche: labwc (Fenster-Manager, Wayland) + Qt 6/QML für alle eigenen Programme
@@ -50,7 +63,16 @@ RUN KVER="$(ls /usr/lib/modules | head -1)" \
     && dnf clean all
 
 # ── Auriliux-Dateien (Design, Dienste, Einstellungen) ─────────────────────────
-COPY files/ /
+COPY image/files/ /
+COPY --from=bau /ausgabe/ /
+
+# ── Schrift Cinzel (Titel wie auf der Auriliux-Webseite, SIL Open Font License), fest auf eine Version gepinnt ──
+RUN mkdir -p /usr/share/fonts/auriliux \
+    && curl -fsSL -o /usr/share/fonts/auriliux/Cinzel.ttf \
+       "https://raw.githubusercontent.com/google/fonts/3dd78844021e948ceb633d1dcee3f7885561b5d9/ofl/cinzel/Cinzel%5Bwght%5D.ttf" \
+    && curl -fsSL -o /usr/share/fonts/auriliux/OFL-Cinzel.txt \
+       "https://raw.githubusercontent.com/google/fonts/3dd78844021e948ceb633d1dcee3f7885561b5d9/ofl/cinzel/OFL.txt" \
+    && fc-cache -f /usr/share/fonts/auriliux
 
 # ── Name und Einstellungen ──────────────────────────────────────────────────────
 RUN sed -i 's/^PRETTY_NAME=.*/PRETTY_NAME="Auriliux OS (Fedora 45)"/' /usr/lib/os-release \

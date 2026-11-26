@@ -5,7 +5,7 @@ name: Auriliux OS bauen
 on:
   push:
     branches: [main]
-    paths: ['image/**', '.github/workflows/bau.yml']
+    paths: ['image/**', 'shell/**', 'werkzeuge/**', '.github/workflows/bau.yml']
   schedule:
     - cron: '0 4 * * 1'          # jeden Montag 04:00 UTC: neue Sicherheitsupdates einbauen
   workflow_dispatch:
@@ -39,7 +39,20 @@ jobs:
         run: |
           TAG=$(date -u +%Y%m%d)
           echo "TAG=$TAG" >> "$GITHUB_ENV"
-          sudo podman build --pull=newer -f image/Containerfile -t "$IMAGE:latest" -t "$IMAGE:$TAG" image
+          sudo podman build --pull=newer -f image/Containerfile -t "$IMAGE:latest" -t "$IMAGE:$TAG" .
+
+      - name: Vorschau-Bilder der Oberfläche
+        continue-on-error: true
+        run: |
+          mkdir -p vorschau
+          sudo podman run --rm -v "$PWD/werkzeuge:/werkzeuge:ro" -v "$PWD/vorschau:/aus" "$IMAGE:latest" bash /werkzeuge/vorschau.sh
+
+      - name: Vorschau hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: vorschau
+          path: vorschau/
+          retention-days: 14
 
       - name: In die Registry hochladen
         run: |
