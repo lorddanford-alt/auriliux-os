@@ -27,6 +27,7 @@ qt_add_qml_module(auriliux-shell
         qml/Raute.qml
 )
 
+target_include_directories(auriliux-shell PRIVATE src)
 target_compile_options(auriliux-shell PRIVATE -Wall -Wextra)
 target_link_libraries(auriliux-shell PRIVATE Qt6::Gui Qt6::Quick Qt6::Qml LayerShellQt::Interface)
 install(TARGETS auriliux-shell RUNTIME DESTINATION bin)

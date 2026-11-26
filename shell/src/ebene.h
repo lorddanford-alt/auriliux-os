@@ -2,8 +2,7 @@
 #pragma once
 #include <QObject>
 #include <QtQml/qqmlregistration.h>
-
-class QQuickWindow;
+#include <QQuickWindow>
 
 class Ebene : public QObject
 {
