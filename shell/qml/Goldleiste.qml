@@ -276,7 +276,7 @@ Window {
                     anchors.verticalCenter: parent.verticalCenter
                     text: leiste.tage[leiste.jetzt.getDay()] + " · " + leiste.jetzt.getDate() + ". " + leiste.monate[leiste.jetzt.getMonth()]
                     color: Theme.leise
-                    font.family: Theme.monoSchrift; font.pixelSize: 9.5; font.letterSpacing: 1.3
+                    font.family: Theme.monoSchrift; font.pixelSize: 10; font.letterSpacing: 1.3
                 }
             }
         }
@@ -293,7 +293,7 @@ Window {
                 klickbar: false
                 Rectangle { anchors.verticalCenter: parent.verticalCenter; width: 6; height: 6; radius: 3; color: Theme.akzent }
                 Text { anchors.verticalCenter: parent.verticalCenter; text: "FOKUS"; color: Theme.akzent
-                       font.family: Theme.monoSchrift; font.pixelSize: 9.5; font.letterSpacing: 1.3 }
+                       font.family: Theme.monoSchrift; font.pixelSize: 10; font.letterSpacing: 1.3 }
             }
             Modul {
                 id: sucheModul
@@ -305,7 +305,7 @@ Window {
                 id: cpuModul
                 onGeklickt: System.starte("foot", ["-e", "top"])
                 Text { visible: !leiste.eng; anchors.verticalCenter: parent.verticalCenter; text: "CPU"
-                       color: cpuModul.drueber ? Theme.akzent : Theme.leise; font.family: Theme.monoSchrift; font.pixelSize: 9.5; font.letterSpacing: 1.3 }
+                       color: cpuModul.drueber ? Theme.akzent : Theme.leise; font.family: Theme.monoSchrift; font.pixelSize: 10; font.letterSpacing: 1.3 }
                 Segmente { wert: leiste.cpu }
                 Text { anchors.verticalCenter: parent.verticalCenter; text: Math.round(leiste.cpu * 100) + " %"; color: Theme.text
                        font.family: Theme.monoSchrift; font.pixelSize: 11 }
@@ -315,7 +315,7 @@ Window {
                 id: ramModul
                 onGeklickt: System.starte("foot", ["-e", "top"])
                 Text { visible: !leiste.eng; anchors.verticalCenter: parent.verticalCenter; text: "RAM"
-                       color: ramModul.drueber ? Theme.akzent : Theme.leise; font.family: Theme.monoSchrift; font.pixelSize: 9.5; font.letterSpacing: 1.3 }
+                       color: ramModul.drueber ? Theme.akzent : Theme.leise; font.family: Theme.monoSchrift; font.pixelSize: 10; font.letterSpacing: 1.3 }
                 Segmente { wert: leiste.ram }
                 Text { anchors.verticalCenter: parent.verticalCenter; text: Math.round(leiste.ram * 100) + " %"; color: Theme.text
                        font.family: Theme.monoSchrift; font.pixelSize: 11 }
