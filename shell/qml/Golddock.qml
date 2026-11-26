@@ -35,7 +35,7 @@ Window {
     // ── Angeheftete Programme (Datei-Kennungen der .desktop-Dateien) ──
     function angeheftetLaden() {
         try { const a = JSON.parse(System.einstellung("dock-angeheftet")); if (Array.isArray(a)) { angeheftet = a; return } } catch (e) {}
-        angeheftet = ["google-chrome", "foot"]
+        angeheftet = ["wabenfinder", "google-chrome", "foot"]
         angeheftetSpeichern()
     }
     function angeheftetSpeichern() { System.schreibe("dock-angeheftet", JSON.stringify(angeheftet)) }
@@ -124,7 +124,7 @@ Window {
         } else if (e.art === "ki") {
             if (!System.starte("auriliux-james", [])) hinweis("James für Auriliux OS folgt")
         } else if (e.art === "ordner" || e.art === "papierkorb") {
-            if (!System.starte("auriliux-shell", ["wabenfinder", e.pfad || "papierkorb"])) hinweis("Wabenfinder folgt")
+            if (!System.starte("auriliux-shell", ["wabenfinder", e.pfad || "papierkorb"])) hinweis("Wabenfinder konnte nicht starten")
         } else if (e.art === "programm") {
             if (e.laeuft) Fenster.programmAktivieren(e.appId)
             else if (e.datei !== "") { Programme.starten(e.datei); const neu = Object.assign({}, startend); neu[e.kennung] = Date.now(); startend = neu }

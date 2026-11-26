@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Wabenfinder
+Comment=Dateien als Waben
+Exec=auriliux-shell wabenfinder %f
+Icon=wabenfinder
+Categories=System;FileManager;
+MimeType=inode/directory;
+StartupWMClass=wabenfinder

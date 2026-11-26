@@ -1,31 +1,42 @@
-// Auriliux-Oberfläche – startet einen Teil der Oberfläche: „auriliux-shell goldleiste“
+// Auriliux-Oberfläche – startet einen Teil der Oberfläche:
+//   auriliux-shell goldleiste | golddock      (feste Bildschirm-Ebenen)
+//   auriliux-shell wabenfinder [ordner]       (normales Fenster)
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QHash>
 #include <QIcon>
-#include "programme.h"
+#include <QDir>
+#include <QFileInfo>
 #include <cstdio>
+#include "programme.h"
+#include "dateien.h"
 
 int main(int argc, char *argv[])
 {
-    // Alle Fenster dieses Programms sind feste Bildschirm-Ebenen (Leiste, Dock, Menüs), keine normalen Fenster
-    qputenv("QT_WAYLAND_SHELL_INTEGRATION", "layer-shell");
-    // Auriliux läuft nur unter Wayland (labwc) – nicht erst nach einer alten X11-Anzeige suchen
-    if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM"))
-        qputenv("QT_QPA_PLATFORM", "wayland");
-    QGuiApplication app(argc, argv);
-    app.setApplicationName(QStringLiteral("auriliux-shell"));
-    app.setOrganizationName(QStringLiteral("Auriliux"));
-
-    const QHash<QString, QString> teile{
+    const QHash<QString, QString> ebenen{
         {QStringLiteral("goldleiste"), QStringLiteral("Goldleiste")},
         {QStringLiteral("golddock"), QStringLiteral("Golddock")},
     };
+    const QHash<QString, QString> fenster{
+        {QStringLiteral("wabenfinder"), QStringLiteral("Wabenfinder")},
+    };
     const QString teil = argc > 1 ? QString::fromLocal8Bit(argv[1]).toLower() : QStringLiteral("goldleiste");
-    if (!teile.contains(teil)) {
-        qCritical("Unbekannter Teil: %s (bekannt: goldleiste, golddock)", qPrintable(teil));
+    if (!ebenen.contains(teil) && !fenster.contains(teil)) {
+        fprintf(stderr, "Unbekannter Teil: %s (bekannt: goldleiste, golddock, wabenfinder)\n", qPrintable(teil));
         return 2;
     }
+
+    // Leiste/Dock/Menüs sind feste Bildschirm-Ebenen, keine normalen Fenster
+    if (ebenen.contains(teil))
+        qputenv("QT_WAYLAND_SHELL_INTEGRATION", "layer-shell");
+    // Auriliux läuft nur unter Wayland (labwc) – nicht erst nach einer alten X11-Anzeige suchen
+    if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM"))
+        qputenv("QT_QPA_PLATFORM", "wayland");
+
+    QGuiApplication app(argc, argv);
+    app.setApplicationName(QStringLiteral("auriliux-") + teil);
+    app.setOrganizationName(QStringLiteral("Auriliux"));
+    if (fenster.contains(teil)) app.setDesktopFileName(teil);     // Kennung für Leiste und Dock
 
     if (qEnvironmentVariableIsSet("AURILIUX_DIAGNOSE"))
         fprintf(stderr, "auriliux-shell: Plattform=%s, Bildschirme=%lld\n", qPrintable(QGuiApplication::platformName()),
@@ -37,9 +48,16 @@ int main(int argc, char *argv[])
 
     QQmlApplicationEngine engine;
     engine.addImageProvider(QStringLiteral("symbol"), new SymbolBild);
+    engine.addImageProvider(QStringLiteral("vorschau"), new VorschauBild);
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed, &app,
                      [] { QCoreApplication::exit(1); }, Qt::QueuedConnection);
-    engine.loadFromModule(QStringLiteral("Auriliux"), teile.value(teil));
+
+    if (teil == QLatin1String("wabenfinder")) {
+        QString start = argc > 2 ? QString::fromLocal8Bit(argv[2]) : QDir::homePath();
+        if (start == QLatin1String("papierkorb")) start = Dateien().papierkorbOrdner();
+        engine.setInitialProperties({{QStringLiteral("startPfad"), QFileInfo(start).absoluteFilePath()}});
+    }
+    engine.loadFromModule(QStringLiteral("Auriliux"), ebenen.value(teil, fenster.value(teil)));
     if (qEnvironmentVariableIsSet("AURILIUX_DIAGNOSE"))
         fprintf(stderr, "auriliux-shell: %lld Hauptobjekt(e) geladen\n", static_cast<long long>(engine.rootObjects().size()));
     return app.exec();

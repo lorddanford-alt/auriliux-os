@@ -33,7 +33,14 @@ sleep 6; grim /aus/4-dock.png
 kill $P; sleep 1
 AURILIUX_VORSCHAU=dockmenue auriliux-shell golddock > /aus/dockmenue.log 2>&1 & P=$!
 sleep 6; grim /aus/5-dockmenue.png
-kill $P $F
+kill $P $F; sleep 1
+# Wabenfinder mit Beispielordnern
+mkdir -p /root/Dokumente/Rechnungen /root/Dokumente/Verträge /root/Bilder/Urlaub /root/Downloads /root/Projekte/System /root/Musik
+for i in 1 2 3 4 5 6 7 8; do echo test > "/root/Dokumente/Notiz $i.txt"; done
+echo x > /root/Dokumente/Bewerbung.pdf; echo x > /root/plan.txt
+HOME=/root auriliux-shell wabenfinder /root > /aus/wabenfinder.log 2>&1 & P=$!
+sleep 8; grim /aus/6-wabenfinder.png
+kill $P
 labwc --exit
 INNEN
 chmod +x /tmp/innen.sh
