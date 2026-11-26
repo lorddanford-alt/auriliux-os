@@ -7,6 +7,9 @@ int main(int argc, char *argv[])
 {
     // Alle Fenster dieses Programms sind feste Bildschirm-Ebenen (Leiste, Dock, Menüs), keine normalen Fenster
     qputenv("QT_WAYLAND_SHELL_INTEGRATION", "layer-shell");
+    // Auriliux läuft nur unter Wayland (labwc) – nicht erst nach einer alten X11-Anzeige suchen
+    if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM"))
+        qputenv("QT_QPA_PLATFORM", "wayland");
     QGuiApplication app(argc, argv);
     app.setApplicationName(QStringLiteral("auriliux-shell"));
     app.setOrganizationName(QStringLiteral("Auriliux"));
