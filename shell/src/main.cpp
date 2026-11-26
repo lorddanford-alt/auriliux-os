@@ -2,6 +2,7 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QHash>
+#include <cstdio>
 
 int main(int argc, char *argv[])
 {
@@ -23,9 +24,15 @@ int main(int argc, char *argv[])
         return 2;
     }
 
+    if (qEnvironmentVariableIsSet("AURILIUX_DIAGNOSE"))
+        fprintf(stderr, "auriliux-shell: Plattform=%s, Bildschirme=%lld\n", qPrintable(QGuiApplication::platformName()),
+                static_cast<long long>(QGuiApplication::screens().size()));
+
     QQmlApplicationEngine engine;
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed, &app,
                      [] { QCoreApplication::exit(1); }, Qt::QueuedConnection);
     engine.loadFromModule(QStringLiteral("Auriliux"), teile.value(teil));
+    if (qEnvironmentVariableIsSet("AURILIUX_DIAGNOSE"))
+        fprintf(stderr, "auriliux-shell: %lld Hauptobjekt(e) geladen\n", static_cast<long long>(engine.rootObjects().size()));
     return app.exec();
 }

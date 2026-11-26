@@ -2,6 +2,7 @@
 #include <QQuickWindow>
 #include <QMargins>
 #include <LayerShellQt/Window>
+#include <cstdio>
 
 void Ebene::einrichten(QQuickWindow *fenster, int kanten, int schicht, int zone, int tastatur,
                        int abstandOben, int abstandRechts, int abstandUnten, int abstandLinks, const QString &name)
@@ -22,4 +23,6 @@ void Ebene::einrichten(QQuickWindow *fenster, int kanten, int schicht, int zone,
     lw->setKeyboardInteractivity(static_cast<LayerShellQt::Window::KeyboardInteractivity>(qBound(0, tastatur, 2)));
     lw->setMargins(QMargins(abstandLinks, abstandOben, abstandRechts, abstandUnten));
     lw->setScope(name.isEmpty() ? QStringLiteral("auriliux") : name);
+    if (qEnvironmentVariableIsSet("AURILIUX_DIAGNOSE"))
+        fprintf(stderr, "Ebene eingerichtet: %s, Größe %dx%d\n", qPrintable(name), fenster->width(), fenster->height());
 }
