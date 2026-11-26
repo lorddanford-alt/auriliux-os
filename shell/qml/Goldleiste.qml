@@ -217,7 +217,7 @@ Window {
         Trenner {}
         Text {
             anchors.verticalCenter: parent.verticalCenter
-            text: leiste.jetzt.toLocaleString(Qt.locale("de_DE"), "ddd d. MMM") + "   " + leiste.jetzt.toLocaleString(Qt.locale("de_DE"), "HH:mm")
+            text: leiste.jetzt.toLocaleString(Qt.locale("de_DE"), "ddd d. MMM") + "  " + leiste.jetzt.toLocaleString(Qt.locale("de_DE"), "HH:mm")
             color: Theme.goldHell
             font.family: Theme.monoSchrift
             font.pixelSize: 11
