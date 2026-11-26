@@ -68,7 +68,7 @@ Window {
     // ── Navigation ──
     function gehe(pfad, merken) {
         const d = Dateien.liste(pfad)
-        if (diagnose) console.log("Wabenfinder: liste(" + pfad + ") → " + JSON.stringify({ path: d.path, error: d.error, n: d.items ? d.items.length : -1 }))
+        if (diagnose) console.warn("Wabenfinder: liste(" + pfad + ") → " + JSON.stringify({ path: d.path, error: d.error, n: d.items ? d.items.length : -1 }))
         if (d.error) { hinweis(d.error, true); return }
         if (merken !== false && aktuell && aktuell.path !== d.path) zurueck = zurueck.concat([aktuell.path])
         ringSchliessen(true)
@@ -261,9 +261,12 @@ Window {
     Component.onCompleted: {
         try {
             orte = Dateien.orte()
-            if (diagnose) console.log("Wabenfinder: Heim=" + Dateien.heim + " Start=" + startPfad + " Orte=" + orte.length)
+            if (diagnose) console.warn("Wabenfinder: Heim=" + Dateien.heim + " Start=" + startPfad + " Orte=" + orte.length)
             gehe(startPfad !== "" ? startPfad : Dateien.heim, false)
-            if (diagnose) console.log("Wabenfinder: aktuell=" + (aktuell ? aktuell.path + " (" + aktuell.items.length + " Einträge)" : "keiner") + " Zellen=" + zellen.length)
+            // Startordner gibt es nicht (mehr)? → Home, notfalls die oberste Ebene
+            if (!aktuell) gehe(Dateien.heim, false)
+            if (!aktuell) gehe("/", false)
+            if (diagnose) console.warn("Wabenfinder: aktuell=" + (aktuell ? aktuell.path + " (" + aktuell.items.length + " Einträge)" : "keiner") + " Zellen=" + zellen.length)
         } catch (e) { console.error("Wabenfinder Startfehler: " + e + "\n" + e.stack) }
         startZeilen.start()
     }
