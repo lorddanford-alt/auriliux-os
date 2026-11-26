@@ -21,6 +21,10 @@ public:
     Q_INVOKABLE bool gibt(const QString &pfad) const;
     /// Umgebungsvariable
     Q_INVOKABLE QString umgebung(const QString &name) const;
+    /// Text in eine Datei unter ~/.config/auriliux schreiben (nur dort – sonst nichts)
+    Q_INVOKABLE bool schreibe(const QString &name, const QString &text) const;
+    /// Text aus ~/.config/auriliux lesen
+    Q_INVOKABLE QString einstellung(const QString &name) const;
     /// Programm starten und nicht darauf warten
     Q_INVOKABLE bool starte(const QString &programm, const QStringList &argumente = {}) const;
     /// Programm starten, Ausgabe kommt später über das Signal antwort(kennung, text)

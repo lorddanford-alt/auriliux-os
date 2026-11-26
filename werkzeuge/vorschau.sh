@@ -22,6 +22,9 @@ grim /aus/1-goldleiste.png
 kill $P; sleep 1
 AURILIUX_VORSCHAU=menue auriliux-shell goldleiste > /aus/menue.log 2>&1 & P=$!
 sleep 6; grim /aus/2-menue.png
+kill $P; sleep 1
+AURILIUX_VORSCHAU=suche auriliux-shell goldleiste > /aus/suche.log 2>&1 & P=$!
+sleep 6; grim /aus/3-suche.png
 kill $P
 labwc --exit
 INNEN

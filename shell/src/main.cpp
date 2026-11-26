@@ -2,6 +2,8 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QHash>
+#include <QIcon>
+#include "programme.h"
 #include <cstdio>
 
 int main(int argc, char *argv[])
@@ -28,7 +30,11 @@ int main(int argc, char *argv[])
         fprintf(stderr, "auriliux-shell: Plattform=%s, Bildschirme=%lld\n", qPrintable(QGuiApplication::platformName()),
                 static_cast<long long>(QGuiApplication::screens().size()));
 
+    // Symbole: Programme bringen ihre Symbole im Thema „hicolor“ mit
+    if (QIcon::themeName().isEmpty()) QIcon::setThemeName(QStringLiteral("hicolor"));
+
     QQmlApplicationEngine engine;
+    engine.addImageProvider(QStringLiteral("symbol"), new SymbolBild);
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed, &app,
                      [] { QCoreApplication::exit(1); }, Qt::QueuedConnection);
     engine.loadFromModule(QStringLiteral("Auriliux"), teile.value(teil));

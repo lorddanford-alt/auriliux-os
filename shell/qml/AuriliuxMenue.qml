@@ -1,5 +1,5 @@
-// Auriliux-Menü (Klick auf die Raute): Ruhezustand, Neustart, Ausschalten, Sperren, Abmelden
-// Das Fenster deckt den ganzen Bildschirm durchsichtig ab: ein Klick daneben schließt das Menü.
+// System-Menü (Klick auf die Raute) – wie das Apple-Menü der Neonleiste
+// Fenster deckt den Bildschirm durchsichtig ab: Klick daneben oder Esc schließt.
 import QtQuick
 import QtQuick.Window
 
@@ -9,11 +9,14 @@ Window {
     visible: false
     width: Screen.width; height: Screen.height
     property bool eingerichtet: false
+    property real linksX: 4
 
-    function oeffnen() {
+    component Linie: Item { width: 236; height: 9; Rectangle { y: 4; x: 10; width: 216; height: 1; color: Theme.gold_a(0.22) } }
+
+    function oeffnen(x) {
+        linksX = x
         if (!eingerichtet) {
-            Ebene.einrichten(menue, Ebene.Oben | Ebene.Unten | Ebene.Links | Ebene.Rechts,
-                             Ebene.Ganzoben, -1, 1, 0, 0, 0, 0, "auriliux-menue")
+            Ebene.einrichten(menue, Ebene.Oben | Ebene.Unten | Ebene.Links | Ebene.Rechts, Ebene.Ganzoben, -1, 1, 0, 0, 0, 0, "auriliux-menue")
             eingerichtet = true
         }
         visible = true
@@ -25,46 +28,32 @@ Window {
 
     Rectangle {
         id: tafel
-        x: 6; y: Theme.leistenHoehe + 4
-        width: 236
-        height: spalte.implicitHeight + 16
-        radius: 8
-        color: Qt.rgba(0.047, 0.031, 0.016, 0.97)
-        border.color: Qt.rgba(0.9, 0.74, 0.34, 0.55)
-        border.width: 1
+        x: menue.linksX; y: Theme.leistenHoehe + 1
+        width: spalte.width + 10; height: spalte.height + 10
+        radius: 7
+        color: Qt.rgba(0.055, 0.04, 0.016, 0.97)
+        border.color: Theme.gold_a(0.45); border.width: 1
         focus: true
         Keys.onEscapePressed: menue.schliessen()
-        MouseArea { anchors.fill: parent }        // Klicks auf die Tafel nicht als „daneben“ werten
+        MouseArea { anchors.fill: parent }
 
         Column {
             id: spalte
-            x: 8; y: 8
-            spacing: 2
-            Row {
-                spacing: 8
-                leftPadding: 6
-                height: 30
-                Raute { anchors.verticalCenter: parent.verticalCenter; groesse: 9; gefuellt: true }
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: "AURILIUX OS"
-                    color: Theme.goldHell
-                    font.family: Theme.titelSchrift
-                    font.pixelSize: 14
-                    font.letterSpacing: 2
-                    font.weight: Font.DemiBold
-                }
-            }
-            Rectangle { width: 220; height: 1; color: Qt.rgba(0.9, 0.74, 0.34, 0.25) }
+            x: 5; y: 5
+            spacing: 0
+            Menuepunkt { titel: "Über Auriliux OS"; verfuegbar: false }
+            Menuepunkt { titel: "Systemeinstellungen …"; verfuegbar: false }
+            Menuepunkt { titel: "Softwareupdate …"; verfuegbar: false }
+            Linie {}
+            Menuepunkt { titel: "Sofort beenden …"; nachfrage: "Vorderes Programm beenden? Nochmal"
+                         onAusgeloest: { menue.schliessen(); Fenster.aktivesSchliessen() } }
+            Linie {}
             Menuepunkt { titel: "Ruhezustand"; onAusgeloest: { menue.schliessen(); System.starte("systemctl", ["suspend"]) } }
-            Menuepunkt { titel: "Neu starten …"; nachfrage: "Wirklich neu starten? Nochmal klicken"
-                         onAusgeloest: System.starte("systemctl", ["reboot"]) }
-            Menuepunkt { titel: "Ausschalten …"; nachfrage: "Wirklich ausschalten? Nochmal klicken"
-                         onAusgeloest: System.starte("systemctl", ["poweroff"]) }
-            Rectangle { width: 220; height: 1; color: Qt.rgba(0.9, 0.74, 0.34, 0.25) }
+            Menuepunkt { titel: "Neustart …"; nachfrage: "Wirklich neu starten? Nochmal"; onAusgeloest: System.starte("systemctl", ["reboot"]) }
+            Menuepunkt { titel: "Ausschalten …"; nachfrage: "Wirklich ausschalten? Nochmal"; onAusgeloest: System.starte("systemctl", ["poweroff"]) }
+            Linie {}
             Menuepunkt { titel: "Bildschirm sperren"; onAusgeloest: { menue.schliessen(); System.starte("loginctl", ["lock-session"]) } }
-            Menuepunkt { titel: "Abmelden …"; nachfrage: "Wirklich abmelden? Nochmal klicken"
-                         onAusgeloest: System.starte("labwc", ["--exit"]) }
+            Menuepunkt { titel: "Abmelden …"; nachfrage: "Wirklich abmelden? Nochmal"; onAusgeloest: System.starte("labwc", ["--exit"]) }
         }
     }
 }

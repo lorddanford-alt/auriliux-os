@@ -1,18 +1,18 @@
-// WLAN-Stärke als vier Balken (0…4)
+// WLAN-Balken (.wbars): 4 Striche 3 px breit, 3 / 5,5 / 8 / 11 px hoch
 import QtQuick
 
-Row {
-    property int staerke: 0
-    property bool verbunden: false
-    spacing: 1.5
+Item {
+    id: w
+    property int stufe: 0          // 0…4
+    implicitWidth: 4 * 3 + 3 * 1.5; implicitHeight: 11
+    anchors.verticalCenter: parent ? parent.verticalCenter : undefined
     Repeater {
         model: 4
         Rectangle {
-            width: 2.5
-            height: 3 + index * 2.5
-            anchors.bottom: parent.bottom
-            radius: 0.5
-            color: (parent.verbunden && index < parent.staerke) ? Theme.akzent : Qt.rgba(0.9, 0.74, 0.34, 0.22)
+            x: index * 4.5; width: 3
+            height: [3, 5.5, 8, 11][index]
+            y: w.height - height
+            color: index < w.stufe ? Theme.akzent : Theme.akzentMatt
         }
     }
 }
