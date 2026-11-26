@@ -1,0 +1,62 @@
+# Auriliux OS – Rezept für das Systemabbild
+# Basis: Fedora 45 bootc (unveränderliches System, Updates als ganzes Abbild, Rückweg zum vorherigen Stand)
+FROM quay.io/fedora/fedora-bootc:45
+
+LABEL org.opencontainers.image.title="Auriliux OS" \
+      org.opencontainers.image.description="Schlankes, sicheres System für das MacBook Pro 12,1 im Auriliux-Gold-Stil"
+
+# ── Paketquellen: Google Chrome, Kameratreiber (FaceTime HD) ─────────────────
+COPY repos/*.repo /etc/yum.repos.d/
+
+# ── Grundsystem ──────────────────────────────────────────────────────────────
+# Oberfläche: labwc (Fenster-Manager, Wayland) + Qt 6/QML für alle eigenen Programme
+# Ton: PipeWire · Netz: NetworkManager (WLAN-Treiber brcmfmac für BCM43602)
+# Schutz: firewalld, ClamAV, YARA, USBGuard · Schnappschüsse: snapper (btrfs)
+# Leistung: zram (komprimierter Arbeitsspeicher)
+RUN dnf -y install --setopt=install_weak_deps=False \
+        labwc swaybg wlr-randr grim slurp foot wl-clipboard xdg-desktop-portal-wlr \
+        xorg-x11-server-Xwayland \
+        qt6-qtbase qt6-qtbase-gui qt6-qtdeclarative qt6-qtsvg qt6-qtwayland qt6-qtmultimedia \
+        layer-shell-qt \
+        mesa-dri-drivers mesa-vulkan-drivers libva-intel-media-driver libva-utils \
+        pipewire wireplumber pipewire-pulseaudio pipewire-alsa \
+        NetworkManager-wifi brcmfmac-firmware wpa_supplicant bluez \
+        greetd tuigreet plymouth plymouth-plugin-script \
+        firewalld clamav clamd clamav-freshclam yara usbguard \
+        snapper btrfs-progs zram-generator \
+        lm_sensors brightnessctl \
+        google-chrome-stable \
+        google-noto-sans-fonts google-noto-sans-mono-fonts \
+        git curl unzip \
+    && dnf clean all
+
+# ── Chrome: Paket schreibt nach /opt, das ist auf dem unveränderlichen System gesperrt ──
+# → nach /usr/lib verschieben, /opt/google zeigt beim Start dorthin
+RUN if [ -d /opt/google ]; then mv /opt/google /usr/lib/google; fi \
+    && ln -sf /usr/lib/google/chrome/google-chrome /usr/bin/google-chrome-stable \
+    && printf 'L+ /var/opt/google - - - - /usr/lib/google\n' > /usr/lib/tmpfiles.d/auriliux-chrome.conf
+
+# ── FaceTime-Kamera: Treiber für den Kern des Abbilds bauen ────────────────────
+# Die Kamera-Firmware selbst wird NICHT ins Abbild gelegt (Apple-Lizenz), sondern beim ersten
+# Start auf deinem Mac geladen/ausgelesen und unter /var/lib/firmware abgelegt.
+RUN KVER="$(ls /usr/lib/modules | head -1)" \
+    && dnf -y install --setopt=install_weak_deps=False akmods "kernel-devel-${KVER}" akmod-facetimehd \
+    && akmods --force --kernels "${KVER}" \
+    && dnf -y remove "kernel-devel-${KVER}" \
+    && dnf clean all
+
+# ── Auriliux-Dateien (Design, Dienste, Einstellungen) ─────────────────────────
+COPY files/ /
+
+# ── Name und Einstellungen ──────────────────────────────────────────────────────
+RUN sed -i 's/^PRETTY_NAME=.*/PRETTY_NAME="Auriliux OS (Fedora 45)"/' /usr/lib/os-release \
+    && systemctl enable firewalld clamav-freshclam greetd \
+    && firewall-offline-cmd --set-default-zone=drop \
+    && systemctl set-default graphical.target
+
+# USBGuard wird bewusst NICHT hier eingeschaltet: ohne Regeln würde es auch die eingebaute Tastatur und das
+# Trackpad (beim MacBook intern per USB angeschlossen) sperren. Guardian erzeugt beim ersten Start eine Regel
+# für alle eingebauten Geräte und schaltet es erst dann ein.
+
+# Prüfung des fertigen Abbilds (schlägt beim Bau fehl, wenn etwas Grundlegendes fehlt)
+RUN bootc container lint

@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<labwc_config>
+  <theme>
+    <name>Auriliux</name>
+    <cornerRadius>6</cornerRadius>
+    <font place="ActiveWindow"><name>Noto Sans</name><size>10</size><weight>Bold</weight></font>
+  </theme>
+  <core><gap>0</gap></core>
+  <keyboard>
+    <default />
+    <keybind key="W-Return"><action name="Execute" command="foot" /></keybind>
+    <keybind key="W-b"><action name="Execute" command="google-chrome-stable" /></keybind>
+  </keyboard>
+</labwc_config>

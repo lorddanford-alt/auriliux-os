@@ -1,0 +1,86 @@
+# Baut Auriliux OS in der Cloud: bei jeder Änderung das Systemabbild, wöchentlich mit allen
+# Sicherheitsupdates, und auf Knopfdruck den USB-/Festplatten-Installer (ISO).
+name: Auriliux OS bauen
+
+on:
+  push:
+    branches: [main]
+    paths: ['image/**', '.github/workflows/bau.yml']
+  schedule:
+    - cron: '0 4 * * 1'          # jeden Montag 04:00 UTC: neue Sicherheitsupdates einbauen
+  workflow_dispatch:
+    inputs:
+      installer:
+        description: 'Installer (ISO) erzeugen'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write                # Installer als Release-Datei ablegen
+  packages: write                # Systemabbild in der GitHub-Registry speichern
+
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/auriliux-os
+
+jobs:
+  abbild:
+    name: Systemabbild
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Platz schaffen
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - name: Abbild bauen
+        run: |
+          TAG=$(date -u +%Y%m%d)
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+          sudo podman build --pull=newer -f image/Containerfile -t "$IMAGE:latest" -t "$IMAGE:$TAG" image
+
+      - name: In die Registry hochladen
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | sudo podman login ghcr.io -u "${{ github.actor }}" --password-stdin
+          sudo podman push "$IMAGE:latest"
+          sudo podman push "$IMAGE:$TAG"
+
+  installer:
+    name: Installer (ISO)
+    needs: abbild
+    if: github.event_name == 'workflow_dispatch' && inputs.installer
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - name: Platz schaffen
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - name: Installer erzeugen
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | sudo podman login ghcr.io -u "${{ github.actor }}" --password-stdin
+          sudo podman pull "$IMAGE:latest"
+          mkdir -p output
+          sudo podman run --rm --privileged --pull=newer \
+            --security-opt label=type:unconfined_t \
+            -v ./output:/output \
+            -v /var/lib/containers/storage:/var/lib/containers/storage \
+            quay.io/centos-bootc/bootc-image-builder:latest \
+            --type anaconda-iso --rootfs btrfs "$IMAGE:latest"
+          sudo find output -name '*.iso' -exec ls -la {} \;
+
+      - name: Als Release ablegen (in 1,9-GB-Teilen)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ISO=$(sudo find output -name '*.iso' | head -1)
+          TAG=installer-$(date -u +%Y%m%d-%H%M)
+          mkdir teile
+          sudo split -b 1900M -d "$ISO" teile/auriliux-os.iso.teil
+          (cd teile && sha256sum auriliux-os.iso.teil* > pruefsummen.txt && sudo sha256sum "$ISO" | sed 's#  .*/#  #' >> pruefsummen.txt)
+          gh release create "$TAG" teile/* --repo "${{ github.repository }}" \
+            --title "Auriliux OS Installer $TAG" \
+            --notes "Zusammensetzen: cat auriliux-os.iso.teil* > auriliux-os.iso (Prüfsummen in pruefsummen.txt)"

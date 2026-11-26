@@ -1,0 +1,2 @@
+# Kamera-Firmware liegt (lokal ausgelesen) unter /var/lib/firmware; ruhiger Start mit Boot-Intro
+kargs = ["firmware_class.path=/var/lib/firmware", "quiet", "splash"]

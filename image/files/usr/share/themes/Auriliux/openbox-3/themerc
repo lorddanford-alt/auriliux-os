@@ -1,0 +1,23 @@
+# Auriliux-Gold – Fensterrahmen für labwc
+border.width: 1
+padding.height: 6
+titlebar.height: 26
+window.active.border.color: #d4a640
+window.inactive.border.color: #3a2c0f
+window.active.title.bg.color: #070502
+window.inactive.title.bg.color: #070502
+window.active.label.text.color: #f6dc8c
+window.inactive.label.text.color: #a08e6c
+window.label.text.justify: center
+window.active.button.unpressed.image.color: #e6bd57
+window.inactive.button.unpressed.image.color: #6b5a35
+menu.border.color: #d4a640
+menu.items.bg.color: #0c0804
+menu.items.text.color: #eadfc6
+menu.items.active.bg.color: #3a2c0f
+menu.items.active.text.color: #f6dc8c
+menu.title.bg.color: #070502
+menu.title.text.color: #e6bd57
+osd.bg.color: #0c0804
+osd.border.color: #d4a640
+osd.label.text.color: #f6dc8c

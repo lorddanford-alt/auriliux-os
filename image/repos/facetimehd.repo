@@ -1,0 +1,10 @@
+[copr:copr.fedorainfracloud.org:mulderje:facetimehd-kmod]
+name=Copr repo for facetimehd-kmod owned by mulderje
+baseurl=https://download.copr.fedorainfracloud.org/results/mulderje/facetimehd-kmod/fedora-$releasever-$basearch/
+type=rpm-md
+skip_if_unavailable=True
+gpgcheck=1
+gpgkey=https://download.copr.fedorainfracloud.org/results/mulderje/facetimehd-kmod/pubkey.gpg
+repo_gpgcheck=0
+enabled=1
+enabled_metadata=1

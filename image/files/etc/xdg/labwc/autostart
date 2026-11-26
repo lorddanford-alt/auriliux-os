@@ -1,0 +1,2 @@
+# Auriliux-Schreibtisch (vorläufig: schwarzer Hintergrund – Goldleiste, Golddock usw. folgen)
+swaybg -c '#000000' >/dev/null 2>&1 &
