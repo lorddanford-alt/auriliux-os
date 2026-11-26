@@ -1,0 +1,16 @@
+#!/bin/bash
+# Lädt die Firmware der FaceTime-HD-Kamera einmalig auf DIESEN Mac (nicht ins öffentliche Systemabbild)
+# und legt sie unter /var/lib/firmware/facetimehd ab. Danach wird der Kameratreiber neu geladen.
+set -euo pipefail
+ZIEL=/var/lib/firmware/facetimehd
+[ -s "$ZIEL/firmware.bin" ] && exit 0
+TMP=$(mktemp -d /var/tmp/kamera.XXXXXX); trap 'rm -rf "$TMP"' EXIT
+cd "$TMP"
+dnf -y --quiet download --destdir="$TMP" facetimehd-firmware
+rpm2cpio facetimehd-firmware-*.rpm | cpio -idm --quiet
+mkdir -p "$ZIEL"
+cp -a usr/lib/firmware/facetimehd/. "$ZIEL/" 2>/dev/null || cp -a lib/firmware/facetimehd/. "$ZIEL/"
+test -s "$ZIEL/firmware.bin"
+modprobe -r facetimehd 2>/dev/null || true
+modprobe facetimehd || true
+echo "Kamera-Firmware eingerichtet."

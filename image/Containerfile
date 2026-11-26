@@ -27,7 +27,7 @@ RUN dnf -y install --setopt=install_weak_deps=False \
         lm_sensors brightnessctl \
         google-chrome-stable \
         google-noto-sans-fonts google-noto-sans-mono-fonts \
-        git curl unzip \
+        git curl unzip cpio \
     && dnf clean all
 
 # ── Chrome: Paket schreibt nach /opt, das ist auf dem unveränderlichen System gesperrt ──
@@ -42,7 +42,11 @@ RUN if [ -d /opt/google ]; then mv /opt/google /usr/lib/google; fi \
 RUN KVER="$(ls /usr/lib/modules | head -1)" \
     && dnf -y install --setopt=install_weak_deps=False akmods "kernel-devel-${KVER}" akmod-facetimehd \
     && akmods --force --kernels "${KVER}" \
-    && dnf -y remove "kernel-devel-${KVER}" \
+    && dnf -y remove "kernel-devel-${KVER}" akmod-facetimehd akmods \
+    && { rpm -e --nodeps facetimehd-firmware 2>/dev/null || true; } \
+    && rm -rf /usr/lib/firmware/facetimehd /var/log/akmods /var/cache/akmods \
+    && test ! -e /usr/lib/firmware/facetimehd \
+    && ls /usr/lib/modules/"${KVER}"/extra/facetimehd/ \
     && dnf clean all
 
 # ── Auriliux-Dateien (Design, Dienste, Einstellungen) ─────────────────────────
@@ -50,13 +54,17 @@ COPY files/ /
 
 # ── Name und Einstellungen ──────────────────────────────────────────────────────
 RUN sed -i 's/^PRETTY_NAME=.*/PRETTY_NAME="Auriliux OS (Fedora 45)"/' /usr/lib/os-release \
-    && systemctl enable firewalld clamav-freshclam greetd \
+    && systemctl enable firewalld clamav-freshclam greetd auriliux-kamera-firmware.service \
     && firewall-offline-cmd --set-default-zone=drop \
     && systemctl set-default graphical.target
 
 # USBGuard wird bewusst NICHT hier eingeschaltet: ohne Regeln würde es auch die eingebaute Tastatur und das
 # Trackpad (beim MacBook intern per USB angeschlossen) sperren. Guardian erzeugt beim ersten Start eine Regel
 # für alle eingebauten Geräte und schaltet es erst dann ein.
+
+# Aufräumen (Protokolle und Reste des Baus gehören nicht ins Abbild)
+RUN rm -rf /var/log/dnf5.log* /var/log/akmods /tmp/* /run/* 2>/dev/null; \
+    sed -i '/^akmods:/d' /etc/passwd /etc/shadow /etc/group /etc/gshadow 2>/dev/null; true
 
 # Prüfung des fertigen Abbilds (schlägt beim Bau fehl, wenn etwas Grundlegendes fehlt)
 RUN bootc container lint

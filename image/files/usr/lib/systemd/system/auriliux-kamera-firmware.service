@@ -1,0 +1,14 @@
+[Unit]
+Description=Auriliux: Firmware der FaceTime-Kamera einrichten (einmalig, lokal)
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=!/var/lib/firmware/facetimehd/firmware.bin
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/auriliux/kamera-firmware
+Restart=on-failure
+RestartSec=60
+
+[Install]
+WantedBy=multi-user.target
