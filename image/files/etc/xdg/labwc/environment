@@ -1,0 +1,4 @@
+# Deutsch und deutsche Mac-Tastatur
+LANG=de_DE.UTF-8
+XKB_DEFAULT_LAYOUT=de
+XKB_DEFAULT_VARIANT=mac

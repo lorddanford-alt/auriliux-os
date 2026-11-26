@@ -283,6 +283,8 @@ Window {
         ScriptAction { script: { wf.startet = false; wf.animZaehler++ } }
         PauseAnimation { duration: 600 }
         ScriptAction { script: startText.zeilen = [] }
+        // nur für die Vorschau-Bilder: Ring der zweiten Wabe öffnen
+        ScriptAction { script: if (System.umgebung("AURILIUX_VORSCHAU") === "ring" && zellenRepeater.count > 2) wf.zelleAktivieren(2, zellenRepeater.itemAt(2)) }
     }
 
     // ── Tastatur ──
@@ -321,6 +323,7 @@ Window {
             onClicked: (m) => { const p = mapToItem(null, m.x, m.y); wf.menueOeffnen(p.x, p.y, null) }
         }
         Repeater {
+            id: zellenRepeater
             model: wf.zellen
             delegate: Item {
                 id: zelle

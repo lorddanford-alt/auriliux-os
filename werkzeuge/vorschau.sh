@@ -37,9 +37,13 @@ kill $P $F; sleep 1
 # Wabenfinder mit Beispielordnern (eigener Heimordner – /root ist im Abbild nur ein Verweis auf /var)
 H=/tmp/heim; mkdir -p "$H/Dokumente/Rechnungen" "$H/Dokumente/Verträge" "$H/Bilder/Urlaub" "$H/Downloads" "$H/Projekte/System" "$H/Musik" "$H/Schreibtisch"
 for i in 1 2 3 4 5 6 7 8; do echo test > "$H/Notiz $i.txt"; done
+for i in $(seq 1 14); do echo x > "$H/Dokumente/Brief $i.txt"; done; echo x > "$H/Dokumente/Vertrag.pdf"
 echo x > "$H/Bewerbung.pdf"; echo x > "$H/plan.md"
 HOME=$H auriliux-shell wabenfinder "$H" > /aus/wabenfinder.log 2>&1 & P=$!
 sleep 8; grim /aus/6-wabenfinder.png
+kill $P; sleep 1
+HOME=$H AURILIUX_VORSCHAU=ring auriliux-shell wabenfinder "$H" > /aus/ring.log 2>&1 & P=$!
+sleep 9; grim /aus/7-ring.png
 kill $P
 labwc --exit
 INNEN

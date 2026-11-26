@@ -40,7 +40,7 @@ RUN dnf -y install --setopt=install_weak_deps=False \
         lm_sensors brightnessctl \
         google-chrome-stable \
         google-noto-sans-fonts google-noto-sans-mono-fonts adwaita-icon-theme \
-        git curl unzip cpio xdg-utils \
+        git curl unzip cpio xdg-utils xdg-user-dirs glibc-langpack-de \
     && dnf clean all
 
 # ── Chrome: Paket schreibt nach /opt, das ist auf dem unveränderlichen System gesperrt ──
