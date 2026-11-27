@@ -524,6 +524,7 @@ Window {
                         color: kn.status === "offen" && !kn.wurzel ? Theme.leise : Theme.text
                         font.family: Theme.monoSchrift; font.pixelSize: 11; font.weight: Font.DemiBold; font.letterSpacing: 0.6
                         lineHeight: 1.2
+                        style: Text.Outline; styleColor: "#000000"     // lesbar auch über den Linien (wie der Textschatten am Mac)
                     }
                     // Raute: Klick = bearbeiten, ziehen = verschieben (halbe Rasterschritte)
                     MouseArea {
@@ -559,7 +560,7 @@ Window {
         Row {
             x: 16; y: 14; spacing: 8
             Schraeg { text: "⌖ Zentrieren"; farbe: cw.fc; onGeklickt: cw.zentrieren() }
-            Schraeg { text: "＋ Neue Fähigkeit"; farbe: cw.fc
+            Schraeg { text: "+ Neue Fähigkeit"; farbe: cw.fc
                       onGeklickt: cw.richtungNeu(cw.aktiv, cw.gewaehlt && cw.gewaehlt.bereich === cw.aktiv ? cw.gewaehlt.id : "wurzel", 0, -1) }
         }
         Beschriftung {
