@@ -40,3 +40,15 @@ void Ebene::klickBereich(QQuickWindow *fenster, const QVariantList &bereiche)
     }
     fenster->setMask(r);
 }
+
+void Ebene::schicht(QQuickWindow *fenster, int schicht)
+{
+    if (auto *lw = fenster ? LayerShellQt::Window::get(fenster) : nullptr)
+        lw->setLayer(static_cast<LayerShellQt::Window::Layer>(qBound(0, schicht, 3)));
+}
+
+void Ebene::tastatur(QQuickWindow *fenster, int tastatur)
+{
+    if (auto *lw = fenster ? LayerShellQt::Window::get(fenster) : nullptr)
+        lw->setKeyboardInteractivity(static_cast<LayerShellQt::Window::KeyboardInteractivity>(qBound(0, tastatur, 2)));
+}

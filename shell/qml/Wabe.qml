@@ -9,6 +9,7 @@ Canvas {
     property string variante: "zelle"
     property real rand: 2
     property string bild: ""                 // Foto im Inneren (image://vorschau/…)
+    property string farbe: ""                // eigene Randfarbe (Tasten der Aufgaben-Leiste, Geräte)
     readonly property var farben: ({
         zelle:        { a: [[0, "rgba(230,189,87,0.75)"], [0.48, "rgba(230,189,87,0.10)"], [1, "rgba(230,189,87,0.50)"]], i: ["rgba(74,56,20,0.95)", "rgba(15,11,4,0.96)"], m: 0.28 },
         dateien:      { a: [[0, "#ffb547"], [0.48, "rgba(255,181,71,0.12)"], [1, "rgba(255,181,71,0.55)"]], i: ["rgba(74,56,20,0.95)", "rgba(15,11,4,0.96)"], m: 0.28 },
@@ -23,9 +24,16 @@ Canvas {
         menue:        { a: [[0, "#e6bd57"], [0.55, "rgba(230,189,87,0.20)"], [1, "#e6bd57"]], i: ["rgba(17,12,5,0.96)", "rgba(17,12,5,0.96)"], m: 0.5 },
         gefahr:       { a: [[0, "#ff5f6d"], [0.55, "rgba(255,95,109,0.20)"], [1, "#ff5f6d"]], i: ["rgba(17,12,5,0.96)", "rgba(17,12,5,0.96)"], m: 0.5 },
         mini:         { a: [[0, "#e6bd57"], [0.6, "rgba(230,189,87,0.15)"], [1, "rgba(230,189,87,0.15)"]], i: ["#120d05", "#120d05"], m: 0.5 },
+        tisch:        { a: [[0, "#e6bd57"], [0.55, "rgba(230,189,87,0.25)"], [1, "#e6bd57"]], i: ["rgba(14,10,4,0.86)", "rgba(14,10,4,0.86)"], m: 0.5 },
+        tischOrdner:  { a: [[0, "#e6bd57"], [0.55, "rgba(230,189,87,0.50)"], [1, "#e6bd57"]], i: ["rgba(14,10,4,0.86)", "rgba(14,10,4,0.86)"], m: 0.5 },
         miniDrueber:  { a: [[0, "#e6bd57"], [0.6, "rgba(230,189,87,0.15)"], [1, "rgba(230,189,87,0.15)"]], i: ["#362a0d", "#362a0d"], m: 0.5 }
     })
     onVarianteChanged: requestPaint()
+    onFarbeChanged: requestPaint()
+    function eigen() {
+        const c = Qt.color(farbe), t = (a) => "rgba(" + Math.round(c.r * 255) + "," + Math.round(c.g * 255) + "," + Math.round(c.b * 255) + "," + a + ")"
+        return { a: [[0, t(1)], [0.55, t(0.2)], [1, t(1)]], i: ["#3a2c0f", "#181105"], m: 0.3 }
+    }
     onWidthChanged: requestPaint()
     onHeightChanged: requestPaint()
     onBildChanged: if (bild !== "") loadImage(bild); else requestPaint()
@@ -41,7 +49,7 @@ Canvas {
         const g = getContext("2d"), b = width, h = height
         g.reset()
         if (b <= 0 || h <= 0) return
-        const f = farben[variante] || farben.zelle
+        const f = farbe !== "" ? eigen() : (farben[variante] || farben.zelle)
         // Rand: Verlauf unter 160° (CSS-Richtung)
         const dx = Math.sin(160 * Math.PI / 180), dy = -Math.cos(160 * Math.PI / 180)
         const l = (Math.abs(b * dx) + Math.abs(h * dy)) / 2

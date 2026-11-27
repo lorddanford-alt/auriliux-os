@@ -7,6 +7,8 @@
 #include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
+#include <QFileSystemWatcher>
+#include <QIcon>
 #include <QGuiApplication>
 #include <QImageReader>
 #include <QMimeDatabase>
@@ -31,7 +33,7 @@ QString artDeutsch(const QFileInfo &fi)
     return t.value(e, e.isEmpty() ? QStringLiteral("Dokument") : e.toUpper() + QStringLiteral("-Datei"));
 }
 
-QVariantMap eintrag(const QFileInfo &fi, bool zaehlen)
+QVariantMap eintrag(const QFileInfo &fi, bool zaehlen, bool symbole = false)
 {
     QVariantMap m;
     m.insert("name", fi.fileName());
@@ -50,6 +52,37 @@ QVariantMap eintrag(const QFileInfo &fi, bool zaehlen)
         m.insert("size", fi.size());
         m.insert("kind", artDeutsch(fi));
         m.insert("image", bildEndungen.contains(e));
+        if (symbole) {
+            if (e == QLatin1String("desktop")) {
+                // Programm-Verknüpfung auf dem Schreibtisch: Name und Symbol aus der Datei
+                QString name, nameDe, symbol;
+                QFile f(fi.absoluteFilePath());
+                if (f.open(QIODevice::ReadOnly)) {
+                    bool gruppe = false;
+                    for (const QByteArray &roh : f.read(32768).split('\n')) {
+                        const QString z = QString::fromUtf8(roh).trimmed();
+                        if (z.startsWith('[')) { gruppe = z == QLatin1String("[Desktop Entry]"); continue; }
+                        if (!gruppe) continue;
+                        if (z.startsWith(QLatin1String("Name="))) name = z.mid(5);
+                        else if (z.startsWith(QLatin1String("Name[de]="))) nameDe = z.mid(9);
+                        else if (z.startsWith(QLatin1String("Icon="))) symbol = z.mid(5);
+                    }
+                }
+                const QString titel = !nameDe.isEmpty() ? nameDe : name;
+                m.insert("titel", titel.isEmpty() ? fi.completeBaseName() : titel);
+                m.insert("symbol", symbol.isEmpty() ? QStringLiteral("application-x-executable") : symbol);
+                m.insert("programm", true);
+                // Sicherheit wie unter Linux üblich: nur ausführbar markierte Verknüpfungen dürfen starten
+                m.insert("vertraut", fi.isExecutable());
+            } else {
+                static QMimeDatabase db;
+                const QMimeType t = db.mimeTypeForFile(fi, QMimeDatabase::MatchExtension);
+                QString sym = t.iconName();
+                if (!QIcon::hasThemeIcon(sym)) sym = t.genericIconName();
+                if (!QIcon::hasThemeIcon(sym)) sym = QStringLiteral("text-x-generic");
+                m.insert("symbol", sym);
+            }
+        }
     }
     return m;
 }
@@ -58,6 +91,13 @@ bool nameOk(const QString &n) { return !n.isEmpty() && !n.contains('/') && n != 
 } // namespace
 
 QString Dateien::heim() const { return QDir::homePath(); }
+
+QString Dateien::schreibtisch() const
+{
+    const QString p = QStandardPaths::writableLocation(QStandardPaths::DesktopLocation);
+    QDir().mkpath(p);
+    return p;
+}
 
 QVariantList Dateien::orte() const
 {
@@ -96,7 +136,7 @@ QVariantMap Dateien::liste(const QString &pfad) const
     if (!d.isReadable()) { r.insert("error", QStringLiteral("Kein Zugriff auf diesen Ordner")); r.insert("items", QVariantList()); return r; }
     QVariantList items;
     const auto infos = d.entryInfoList(QDir::AllEntries | QDir::NoDotAndDotDot, QDir::NoSort);   // versteckte Dateien (.xyz) wie am Mac nicht zeigen
-    for (const QFileInfo &fi : infos) items << eintrag(fi, true);
+    for (const QFileInfo &fi : infos) items << eintrag(fi, true, true);
     r.insert("items", items);
     return r;
 }
@@ -153,6 +193,49 @@ void Dateien::suchen(const QString &wurzel, const QString &text)
         }
         return out;
     }));
+}
+
+QString Dateien::verschieben(const QString &pfad, const QString &zielOrdner) const
+{
+    const QFileInfo fi(pfad);
+    if (!fi.exists()) return QStringLiteral("Gibt es nicht mehr");
+    const QString ziel = QDir(zielOrdner).filePath(fi.fileName());
+    if (QFileInfo(zielOrdner).absoluteFilePath() == fi.absolutePath()) return {};
+    if ((QFileInfo(zielOrdner).absoluteFilePath() + '/').startsWith(fi.absoluteFilePath() + '/'))
+        return QStringLiteral("Ein Ordner passt nicht in sich selbst");
+    if (QFileInfo::exists(ziel)) return QStringLiteral("„%1“ gibt es dort schon.").arg(fi.fileName());
+    return QFile::rename(pfad, ziel) ? QString() : QStringLiteral("Verschieben nicht möglich");
+}
+
+void Dateien::kopieren(const QString &kennung, const QString &pfad, const QString &zielOrdner)
+{
+    auto *w = new QFutureWatcher<QString>(this);
+    connect(w, &QFutureWatcher<QString>::finished, this, [this, w, kennung] { emit kopiert(kennung, w->result()); w->deleteLater(); });
+    w->setFuture(QtConcurrent::run([pfad, zielOrdner]() -> QString {
+        const QFileInfo fi(pfad);
+        const QString ziel = QDir(zielOrdner).filePath(fi.fileName());
+        if (QFileInfo::exists(ziel)) return QStringLiteral("„%1“ gibt es dort schon.").arg(fi.fileName());
+        if (!fi.isDir()) return QFile::copy(pfad, ziel) ? QString() : QStringLiteral("Kopieren nicht möglich");
+        if (!QDir().mkpath(ziel)) return QStringLiteral("Kopieren nicht möglich");
+        QDirIterator it(pfad, QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden, QDirIterator::Subdirectories);
+        const QDir quelle(pfad);
+        while (it.hasNext()) {
+            it.next();
+            const QString neu = QDir(ziel).filePath(quelle.relativeFilePath(it.filePath()));
+            if (it.fileInfo().isDir() && !it.fileInfo().isSymLink()) { if (!QDir().mkpath(neu)) return QStringLiteral("Kopieren abgebrochen"); }
+            else if (!QFile::copy(it.filePath(), neu)) return QStringLiteral("Kopieren abgebrochen bei „%1“").arg(it.fileName());
+        }
+        return {};
+    }));
+}
+
+void Dateien::beobachte(const QString &pfad)
+{
+    if (!m_wache) {
+        m_wache = new QFileSystemWatcher(this);
+        connect(m_wache, &QFileSystemWatcher::directoryChanged, this, &Dateien::ordnerGeaendert);
+    }
+    if (!m_wache->directories().contains(pfad)) m_wache->addPath(pfad);
 }
 
 QImage VorschauBild::requestImage(const QString &id, QSize *size, const QSize &requestedSize)

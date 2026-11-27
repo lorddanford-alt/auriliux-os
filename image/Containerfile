@@ -33,7 +33,7 @@ RUN dnf -y install --setopt=install_weak_deps=False \
         layer-shell-qt \
         mesa-dri-drivers mesa-vulkan-drivers libva-intel-media-driver libva-utils \
         pipewire wireplumber pipewire-pulseaudio pipewire-alsa \
-        NetworkManager-wifi NetworkManager-tui brcmfmac-firmware wpa_supplicant bluez \
+        NetworkManager-wifi NetworkManager-tui brcmfmac-firmware wpa_supplicant bluez udisks2 \
         greetd tuigreet plymouth plymouth-plugin-script \
         firewalld clamav clamd clamav-freshclam yara usbguard \
         snapper btrfs-progs zram-generator \

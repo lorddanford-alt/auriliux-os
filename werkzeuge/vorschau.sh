@@ -44,9 +44,25 @@ sleep 8; grim /aus/6-wabenfinder.png
 kill $P; sleep 1
 HOME=$H AURILIUX_VORSCHAU=ring auriliux-shell wabenfinder "$H" > /aus/ring.log 2>&1 & P=$!
 sleep 9; grim /aus/7-ring.png
-kill $P
+kill $P; sleep 1
+# Schreibtisch mit Aufgaben-Leiste: Beispiel-Schreibtisch (deutscher Ordnername wie nach xdg-user-dirs-update)
+mkdir -p "$H/.config" "$H/Schreibtisch/Projekte" "$H/Schreibtisch/Ideen"
+printf 'XDG_DESKTOP_DIR="$HOME/Schreibtisch"\nXDG_DOCUMENTS_DIR="$HOME/Dokumente"\nXDG_DOWNLOAD_DIR="$HOME/Downloads"\nXDG_PICTURES_DIR="$HOME/Bilder"\nXDG_MUSIC_DIR="$HOME/Musik"\n' > "$H/.config/user-dirs.dirs"
+echo "Milch, Brot" > "$H/Schreibtisch/Einkaufsliste.txt"; echo x > "$H/Schreibtisch/Rechnung 2026-11.pdf"
+cp /aus/1-goldleiste.png "$H/Schreibtisch/Bildschirmfoto.png"
+cp /usr/share/applications/google-chrome.desktop "$H/Schreibtisch/Chrome.desktop" 2>/dev/null && chmod +x "$H/Schreibtisch/Chrome.desktop"
+HOME=$H auriliux-shell goldleiste > /dev/null 2>&1 & L=$!
+HOME=$H auriliux-shell schreibtisch > /aus/schreibtisch.log 2>&1 & P=$!
+sleep 8; grim /aus/8-schreibtisch.png
+kill $P; sleep 1
+HOME=$H AURILIUX_VORSCHAU=aufgaben auriliux-shell schreibtisch > /aus/aufgaben.log 2>&1 & P=$!
+sleep 8; grim /aus/9-aufgaben.png
+kill $P; sleep 1
+HOME=$H AURILIUX_VORSCHAU=geraete AURILIUX_GERAETE_DEMO=1 auriliux-shell schreibtisch > /aus/geraete.log 2>&1 & P=$!
+sleep 8; grim /aus/10-geraete.png
+kill $P $L
 labwc --exit
 INNEN
 chmod +x /tmp/innen.sh
-timeout 90 labwc -C /tmp/leer -s /tmp/innen.sh > /aus/labwc.log 2>&1
+timeout 160 labwc -C /tmp/leer -s /tmp/innen.sh > /aus/labwc.log 2>&1
 ls -la /aus

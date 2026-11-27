@@ -26,4 +26,7 @@ public:
     /// Nur diese Rechtecke nehmen Maus-Klicks an – alles andere geht durch zu den Fenstern dahinter.
     /// bereiche: Liste von {x, y, w, h}; leere Liste = ganzes Fenster
     Q_INVOKABLE void klickBereich(QQuickWindow *fenster, const QVariantList &bereiche);
+    /// Schicht und Tastatur später umstellen (z. B. Aufgaben-Leiste beim Aufklappen nach vorne holen)
+    Q_INVOKABLE void schicht(QQuickWindow *fenster, int schicht);
+    Q_INVOKABLE void tastatur(QQuickWindow *fenster, int tastatur);
 };
