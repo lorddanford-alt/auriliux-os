@@ -635,7 +635,7 @@ fn main() {
     let mut verlauf_t: VecDeque<f64> = VecDeque::new();
     let mut verlauf_c: VecDeque<f64> = VecDeque::new();
     let mut hohe_last_seit: Option<Instant> = None;
-    let mut letzte_messung = Instant::now() - Duration::from_secs(10);
+    let mut letzte_messung = Instant::now().checked_sub(Duration::from_secs(10)).unwrap_or_else(Instant::now);
     let mut letzter_vorne = (String::new(), false);
     let mut alter_status = String::new();
     let mut takt: u64 = 0;
@@ -776,7 +776,7 @@ fn main() {
             }
         } else if wechsel {
             // Fokus-Änderung sofort sichtbar machen (Goldleiste: „FOKUS“)
-            letzte_messung = Instant::now() - Duration::from_secs(10);
+            letzte_messung = Instant::now().checked_sub(Duration::from_secs(10)).unwrap_or_else(Instant::now);
         }
         std::thread::sleep(Duration::from_millis(500));
     }

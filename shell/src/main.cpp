@@ -4,6 +4,7 @@
 //   auriliux-shell guardian [abschnitt]       (Schutz-Zentrale: uebersicht, schutz, ereignisse, herzschlag …)
 //   auriliux-shell zentrale [abschnitt]       (Einstellungen: bildschirm, ton, wlan, bluetooth, tastatur, energie, benutzer, updates, ueber)
 //   auriliux-shell charakter [bereich]        (Charakter: Übersicht oder muskulatur, bildung, geld, beziehung)
+//   auriliux-shell tresor                     (Tresor: Schnappschüsse, Sicherung, Zurückholen – mit Drehcode)
 //   auriliux-shell sperre                     (Bildschirmsperre – besser über /usr/libexec/auriliux/sperren)
 //   auriliux-shell sperrwache                 (unsichtbar: sperrt bei Leerlauf, vor dem Ruhezustand, auf Befehl)
 #include <QGuiApplication>
@@ -33,11 +34,12 @@ int main(int argc, char *argv[])
         {QStringLiteral("guardian"), QStringLiteral("Guardian")},
         {QStringLiteral("zentrale"), QStringLiteral("Zentrale")},
         {QStringLiteral("charakter"), QStringLiteral("Charakter")},
+        {QStringLiteral("tresor"), QStringLiteral("Tresor")},
     };
     const QString teil = argc > 1 ? QString::fromLocal8Bit(argv[1]).toLower() : QStringLiteral("goldleiste");
     const bool sperre = teil == QLatin1String("sperre"), wache = teil == QLatin1String("sperrwache");
     if (!ebenen.contains(teil) && !fenster.contains(teil) && !sperre && !wache) {
-        fprintf(stderr, "Unbekannter Teil: %s (bekannt: goldleiste, golddock, schreibtisch, anmeldung, wabenfinder, guardian, zentrale, charakter, sperre, sperrwache)\n", qPrintable(teil));
+        fprintf(stderr, "Unbekannter Teil: %s (bekannt: goldleiste, golddock, schreibtisch, anmeldung, wabenfinder, guardian, zentrale, charakter, tresor, sperre, sperrwache)\n", qPrintable(teil));
         return 2;
     }
 

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Tresor
+Comment=Schnappschüsse, Sicherung auf AURILIUX und Zurückholen – mit Drehcode
+Exec=auriliux-shell tresor
+Icon=tresor
+Categories=Utility;System;
+StartupWMClass=tresor

@@ -1,0 +1,18 @@
+# Einmalig beim Hochfahren, bevor sich jemand anmeldet: /var/home zu einem eigenen btrfs-Teilbereich machen,
+# damit der Tresor Schnappschüsse aufnehmen kann. Kopiert nichts wirklich (reflink), dauert Sekunden;
+# bei jedem Fehler bleibt alles, wie es war. Danach tut der Dienst bei jedem Start nichts mehr.
+[Unit]
+Description=Auriliux Tresor: Benutzerordner für Schnappschüsse vorbereiten
+DefaultDependencies=no
+After=local-fs.target
+Before=greetd.service display-manager.service systemd-user-sessions.service auriliux-tresor.service
+ConditionPathIsDirectory=/var/home
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/auriliux/auriliux-tresor --vorbereiten
+SuccessExitStatus=2
+TimeoutStartSec=30min
+
+[Install]
+WantedBy=multi-user.target

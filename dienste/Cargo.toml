@@ -1,4 +1,4 @@
-# Auriliux-Dienste: Guardian (Schutz) und Herzschlag (Leistung) – laufen mit vollen Rechten,
+# Auriliux-Dienste: Guardian (Schutz), Herzschlag (Leistung) und Tresor (Sicherung) – laufen mit vollen Rechten,
 # deshalb in Rust (speichersicher) und nur mit der Standardbibliothek (keine fremden Pakete aus dem Netz).
 [package]
 name = "auriliux-dienste"
@@ -18,6 +18,10 @@ path = "src/guardian/main.rs"
 [[bin]]
 name = "auriliux-herzschlag"
 path = "src/herzschlag/main.rs"
+
+[[bin]]
+name = "auriliux-tresor"
+path = "src/tresor/main.rs"
 
 [profile.release]
 opt-level = 2

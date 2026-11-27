@@ -114,6 +114,15 @@ HOME=$H AURILIUX_VORSCHAU=charakter auriliux-shell charakter bildung > /aus/char
 sleep 6; grim /aus/28-charakter-baum.png; kill $P; sleep 1
 HOME=$H AURILIUX_VORSCHAU=charakter-editor auriliux-shell charakter bildung > /aus/charakter-editor.log 2>&1 & P=$!
 sleep 6; grim /aus/29-charakter-editor.png; kill $P; sleep 1
+# Tresor (ohne Tresor-Dienst im Bau-Behälter → Beispielwerte; Vorschau-Code 12-34-56)
+for t in tresor tresor-neu tresor-fehler tresor-offen; do
+  HOME=$H AURILIUX_VORSCHAU=$t auriliux-shell tresor > /aus/$t.log 2>&1 & P=$!
+  sleep 5; grim /aus/$t.png; kill $P; sleep 1
+done
+HOME=$H AURILIUX_VORSCHAU=tresor-oeffnet auriliux-shell tresor > /aus/tresor-oeffnet.log 2>&1 & P=$!
+sleep 3; grim /aus/tresor-oeffnet-1.png; sleep 1.6; grim /aus/tresor-oeffnet-2.png; kill $P; sleep 1
+n=30; for t in tresor tresor-neu tresor-fehler tresor-oeffnet-1 tresor-oeffnet-2 tresor-offen; do mv /aus/$t.png /aus/$n-$t.png; n=$((n+1)); done
+/usr/libexec/auriliux/auriliux-tresor --einmal > /aus/tresor-status.json 2> /aus/tresor-dienst.log
 # Sperrwache kurz laufen lassen (ohne logind im Bau-Behälter: darf nur melden, nicht abstürzen)
 auriliux-shell sperrwache > /aus/sperrwache.log 2>&1 & P=$!
 sleep 3; kill -0 $P 2>/dev/null && echo "sperrwache läuft" >> /aus/sperrwache.log || echo "sperrwache beendet" >> /aus/sperrwache.log
@@ -131,5 +140,5 @@ sleep 1; grim /aus/20-entsperrt.png 2>> /aus/sperre.log
 labwc --exit
 INNEN
 chmod +x /tmp/innen.sh
-timeout 440 labwc -C /tmp/leer -s /tmp/innen.sh > /aus/labwc.log 2>&1
+timeout 500 labwc -C /tmp/leer -s /tmp/innen.sh > /aus/labwc.log 2>&1
 ls -la /aus

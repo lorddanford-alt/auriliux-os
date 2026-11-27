@@ -35,7 +35,12 @@ jobs:
           cargo --version
           cargo test --release --offline
           cargo build --release --offline
-          ls -la target/release/auriliux-guardian target/release/auriliux-herzschlag
+          ls -la target/release/auriliux-guardian target/release/auriliux-herzschlag target/release/auriliux-tresor
+
+      - name: Tresor an echter btrfs-Platte prüfen
+        run: |
+          sudo apt-get install -y -qq btrfs-progs > /dev/null
+          sudo bash werkzeuge/tresor-test.sh "$PWD/dienste/target/release/auriliux-tresor"
 
   abbild:
     name: Systemabbild

@@ -186,7 +186,7 @@ impl Guardian {
             usb_fd: -1,
             lage: schilde::Lage::default(),
             geaendert: true,
-            zuletzt_geschrieben: Instant::now() - Duration::from_secs(5),
+            zuletzt_geschrieben: Instant::now().checked_sub(Duration::from_secs(5)).unwrap_or_else(Instant::now),
             pruefung_laeuft: false,
             naechste_pruefung: Instant::now(),
             usb_faellig: None,

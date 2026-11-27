@@ -1,0 +1,34 @@
+# Tresor: stündliche Schnappschüsse deiner Dateien, verschlüsselte Sicherung auf die Festplatte AURILIUX,
+# Zurückholen nur mit dem Drehcode. Läuft mit root-Rechten, weil nur root Schnappschüsse anlegen darf.
+[Unit]
+Description=Auriliux Tresor (Schnappschüsse und Sicherung)
+After=local-fs.target auriliux-tresor-vorbereiten.service
+
+[Service]
+Type=simple
+ExecStart=/usr/libexec/auriliux/auriliux-tresor
+Restart=always
+RestartSec=5
+RuntimeDirectory=auriliux/tresor
+RuntimeDirectoryPreserve=restart
+StateDirectory=auriliux/tresor
+StateDirectoryMode=0700
+CacheDirectory=auriliux-tresor
+CacheDirectoryMode=0700
+# Sicherungen laufen im Hintergrund und sollen nicht bremsen
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+# Schutz: Systemdateien bleiben schreibgeschützt, kein eigenes Netz nötig
+ProtectSystem=full
+PrivateTmp=yes
+PrivateNetwork=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictRealtime=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX
+
+[Install]
+WantedBy=multi-user.target
