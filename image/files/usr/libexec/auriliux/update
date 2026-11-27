@@ -1,0 +1,14 @@
+#!/bin/sh
+# Lädt das neueste Auriliux-Abbild (OHNE Neustart – aktiv beim nächsten Start) und schreibt den Stand
+# für die Zentrale nach /var/lib/auriliux/update. „--nur-stand“: nur den Stand schreiben (beim Hochfahren).
+ordner=/var/lib/auriliux/update
+mkdir -p "$ordner" && chmod 0755 /var/lib/auriliux "$ordner"
+code=0
+if [ "$1" != "--nur-stand" ]; then
+    bootc upgrade --quiet
+    code=$?
+    printf '{"zeit":%s,"code":%s}\n' "$(date +%s)" "$code" > "$ordner/letzte.json.neu" && mv "$ordner/letzte.json.neu" "$ordner/letzte.json"
+fi
+bootc status --format=json > "$ordner/status.json.neu" 2>/dev/null && mv "$ordner/status.json.neu" "$ordner/status.json"
+chmod 0644 "$ordner"/*.json 2>/dev/null
+exit $code

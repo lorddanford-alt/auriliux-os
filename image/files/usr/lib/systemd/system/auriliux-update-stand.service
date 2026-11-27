@@ -1,0 +1,12 @@
+# Schreibt beim Hochfahren den aktuellen Update-Stand für die Zentrale (liest nur, lädt nichts)
+[Unit]
+Description=Auriliux-Update-Stand für die Zentrale
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/auriliux/update --nur-stand
+Nice=19
+
+[Install]
+WantedBy=multi-user.target

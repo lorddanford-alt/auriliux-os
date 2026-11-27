@@ -82,6 +82,9 @@ RUN mkdir -p /usr/share/fonts/auriliux \
        "https://raw.githubusercontent.com/google/fonts/3dd78844021e948ceb633d1dcee3f7885561b5d9/ofl/cinzel/OFL.txt" \
     && fc-cache -f /usr/share/fonts/auriliux
 
+# Stand dieses Abbilds (zeigt die Zentrale unter „Updates“ und „Über“)
+RUN date -u +%Y-%m-%dT%H:%M:%SZ > /usr/share/auriliux/stand
+
 # Hilfseinträge des Terminals nicht in der App-Suche zeigen
 RUN for d in footclient foot-server; do f=/usr/share/applications/$d.desktop; \
         [ -f "$f" ] && sed -i 's/^\[Desktop Entry\]$/[Desktop Entry]\nNoDisplay=true/' "$f"; done; true
@@ -90,6 +93,7 @@ RUN for d in footclient foot-server; do f=/usr/share/applications/$d.desktop; \
 RUN sed -i 's/^PRETTY_NAME=.*/PRETTY_NAME="Auriliux OS (Fedora 45)"/' /usr/lib/os-release \
     && systemctl enable firewalld clamav-freshclam greetd auriliux-kamera-firmware.service \
        auriliux-guardian.service auriliux-herzschlag.service auriliux-update.timer \
+       auriliux-update-stand.service bluetooth.service \
     && { systemctl mask bootc-fetch-apply-updates.timer 2>/dev/null || true; } \
     && firewall-offline-cmd --set-default-zone=drop \
     && systemctl set-default graphical.target

@@ -41,9 +41,9 @@ Window {
             id: spalte
             x: 5; y: 5
             spacing: 0
-            Menuepunkt { titel: "Über Auriliux OS"; verfuegbar: false }
-            Menuepunkt { titel: "Systemeinstellungen …"; verfuegbar: false }
-            Menuepunkt { titel: "Softwareupdate …"; verfuegbar: false }
+            Menuepunkt { titel: "Über Auriliux OS"; onAusgeloest: { menue.schliessen(); System.starte("auriliux-shell", ["zentrale", "ueber"]) } }
+            Menuepunkt { titel: "Systemeinstellungen …"; onAusgeloest: { menue.schliessen(); System.starte("auriliux-shell", ["zentrale"]) } }
+            Menuepunkt { titel: "Softwareupdate …"; onAusgeloest: { menue.schliessen(); System.starte("auriliux-shell", ["zentrale", "updates"]) } }
             Linie {}
             Menuepunkt { titel: "Sofort beenden …"; nachfrage: "Vorderes Programm beenden? Nochmal"
                          onAusgeloest: { menue.schliessen(); Fenster.aktivesSchliessen() } }

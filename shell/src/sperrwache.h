@@ -23,6 +23,8 @@ public slots:
 
 private:
     void hemmen();
+    void leerlaufEinrichten();
+    int m_minuten = -1;
     QDBusUnixFileDescriptor m_hemmer;   // hält den Ruhezustand kurz auf, bis die Sperre steht
     LeerlaufMelder *m_melder = nullptr;
     Leerlauf *m_leerlauf = nullptr;

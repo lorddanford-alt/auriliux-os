@@ -7,6 +7,7 @@
 #include <QDateTime>
 #include <QDir>
 #include <QElapsedTimer>
+#include <QFileSystemWatcher>
 #include <QFile>
 #include <QGuiApplication>
 #include <QProcess>
@@ -46,19 +47,20 @@ const QString SPERREN = QStringLiteral("/usr/libexec/auriliux/sperren");
 
 Sperrwache::Sperrwache(QObject *parent) : QObject(parent)
 {
-    // 1) Leerlauf
-    const QSettings e(QDir::homePath() + QStringLiteral("/.config/auriliux/sperre.conf"), QSettings::IniFormat);
-    const int minuten = qBound(0, e.value(QStringLiteral("sperren_nach_minuten"), 5).toInt(), 24 * 60);
-    auto *wa = qGuiApp->nativeInterface<QNativeInterface::QWaylandApplication>();
+    // 1) Leerlauf – Einstellung wird neu gelesen, sobald die Zentrale sie ändert
     m_melder = new LeerlaufMelder;
-    if (minuten > 0 && m_melder->isActive() && wa && wa->seat()) {
-        m_leerlauf = new Leerlauf([this] { sperren(); });
-        m_leerlauf->init(m_melder->get_idle_notification(uint32_t(minuten) * 60000u, wa->seat()));
-        fprintf(stderr, "auriliux-shell sperrwache: sperrt nach %d Minuten ohne Eingabe\n", minuten);
-    } else {
-        fprintf(stderr, "auriliux-shell sperrwache: kein automatisches Sperren bei Leerlauf (%s)\n",
-                minuten == 0 ? "abgeschaltet" : "Fenster-Manager meldet keinen Leerlauf");
-    }
+    leerlaufEinrichten();
+    const QString ordner = QDir::homePath() + QStringLiteral("/.config/auriliux");
+    QDir().mkpath(ordner);
+    const QString datei = ordner + QStringLiteral("/sperre.conf");
+    auto *w = new QFileSystemWatcher({ordner}, this);
+    if (QFile::exists(datei)) w->addPath(datei);
+    const auto neu = [this, w, datei] {
+        if (QFile::exists(datei) && !w->files().contains(datei)) w->addPath(datei);   // nach Neuanlegen wieder beobachten
+        leerlaufEinrichten();
+    };
+    connect(w, &QFileSystemWatcher::directoryChanged, this, neu);
+    connect(w, &QFileSystemWatcher::fileChanged, this, neu);
 
     // 2) logind: „loginctl lock-session“ und Ruhezustand
     QDBusConnection bus = QDBusConnection::systemBus();
@@ -80,6 +82,24 @@ Sperrwache::Sperrwache(QObject *parent) : QObject(parent)
         fprintf(stderr, "auriliux-shell sperrwache: Sitzung bei logind nicht gefunden\n");
     bus.connect(LOGIN, PFAD, VERWALTUNG, QStringLiteral("PrepareForSleep"), this, SLOT(schlaf(bool)));
     hemmen();
+}
+
+void Sperrwache::leerlaufEinrichten()
+{
+    const QSettings e(QDir::homePath() + QStringLiteral("/.config/auriliux/sperre.conf"), QSettings::IniFormat);
+    const int minuten = qBound(0, e.value(QStringLiteral("sperren_nach_minuten"), 5).toInt(), 24 * 60);
+    if (minuten == m_minuten) return;
+    m_minuten = minuten;
+    if (m_leerlauf) { m_leerlauf->destroy(); delete m_leerlauf; m_leerlauf = nullptr; }
+    auto *wa = qGuiApp->nativeInterface<QNativeInterface::QWaylandApplication>();
+    if (minuten > 0 && m_melder->isActive() && wa && wa->seat()) {
+        m_leerlauf = new Leerlauf([this] { sperren(); });
+        m_leerlauf->init(m_melder->get_idle_notification(uint32_t(minuten) * 60000u, wa->seat()));
+        fprintf(stderr, "auriliux-shell sperrwache: sperrt nach %d Minuten ohne Eingabe\n", minuten);
+    } else {
+        fprintf(stderr, "auriliux-shell sperrwache: kein automatisches Sperren bei Leerlauf (%s)\n",
+                minuten == 0 ? "abgeschaltet" : "Fenster-Manager meldet keinen Leerlauf");
+    }
 }
 
 bool Sperrwache::istGesperrt()

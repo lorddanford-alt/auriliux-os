@@ -84,6 +84,14 @@ AURILIUX_VORSCHAU=anmeldung-fehler auriliux-shell anmeldung > /aus/anmeldung-feh
 sleep 3; grim /aus/17-anmeldung-fehler.png
 kill $P
 sh -n /usr/libexec/auriliux/anmeldung && sh -n /usr/libexec/auriliux/bildschirm-skalieren && sh -n /usr/libexec/auriliux/sperren && echo "Skripte ok" >> /aus/anmeldung.log
+# Zentrale (Einstellungen): fünf Bereiche, ohne WLAN/Ton/Bluetooth-Dienste im Bau-Behälter → Beispielwerte
+for t in bildschirm ton wlan energie updates ueber; do
+  HOME=$H AURILIUX_VORSCHAU=zentrale auriliux-shell zentrale $t > /aus/zentrale-$t.log 2>&1 & P=$!
+  sleep 6; grim /aus/zentrale-$t.png
+  kill $P; sleep 1
+done
+n=21; for t in bildschirm ton wlan energie updates ueber; do mv /aus/zentrale-$t.png /aus/$n-zentrale-$t.png; n=$((n+1)); done
+sh -n /usr/libexec/auriliux/update && echo "update-Skript ok" >> /aus/zentrale-ueber.log
 # Sperrwache kurz laufen lassen (ohne logind im Bau-Behälter: darf nur melden, nicht abstürzen)
 auriliux-shell sperrwache > /aus/sperrwache.log 2>&1 & P=$!
 sleep 3; kill -0 $P 2>/dev/null && echo "sperrwache läuft" >> /aus/sperrwache.log || echo "sperrwache beendet" >> /aus/sperrwache.log
@@ -101,5 +109,5 @@ sleep 1; grim /aus/20-entsperrt.png 2>> /aus/sperre.log
 labwc --exit
 INNEN
 chmod +x /tmp/innen.sh
-timeout 320 labwc -C /tmp/leer -s /tmp/innen.sh > /aus/labwc.log 2>&1
+timeout 400 labwc -C /tmp/leer -s /tmp/innen.sh > /aus/labwc.log 2>&1
 ls -la /aus

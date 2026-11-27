@@ -1,0 +1,14 @@
+// Auriliux OS: was der Besitzer am Gerät (Gruppe wheel, aktive Sitzung am Mac selbst) ohne Passwort-Rückfrage darf.
+// Ohne diese Regel bräuchte es ein Passwort-Fenster, das es in Auriliux (noch) nicht gibt.
+polkit.addRule(function (action, subject) {
+    if (!subject.local || !subject.active || !subject.isInGroup("wheel"))
+        return polkit.Result.NOT_HANDLED;
+    // Nach Updates suchen: lädt nur herunter, aktiv wird es erst beim nächsten Neustart
+    if (action.id == "org.freedesktop.systemd1.manage-units" &&
+        action.lookup("unit") == "auriliux-update.service" && action.lookup("verb") == "start")
+        return polkit.Result.YES;
+    // WLAN-Netze speichern (wie bei jedem Desktop-System)
+    if (action.id == "org.freedesktop.NetworkManager.settings.modify.system")
+        return polkit.Result.YES;
+    return polkit.Result.NOT_HANDLED;
+});

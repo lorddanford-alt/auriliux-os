@@ -8,6 +8,6 @@ ConditionACPower=true
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/bootc upgrade --quiet
+ExecStart=/usr/libexec/auriliux/update
 Nice=19
 IOSchedulingClass=idle

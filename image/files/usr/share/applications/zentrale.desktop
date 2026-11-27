@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Zentrale
+Comment=Einstellungen: Bildschirm, Ton, WLAN, Bluetooth, Energie, Updates
+Exec=auriliux-shell zentrale
+Icon=zentrale
+Categories=Settings;System;
+StartupWMClass=zentrale
