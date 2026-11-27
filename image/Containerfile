@@ -97,7 +97,8 @@ RUN kver="$(ls /usr/lib/modules | head -1)" && img="/usr/lib/modules/$kver/initr
     && if comm -23 /tmp/vorher /tmp/nachher | grep -q .; then echo "FEHLER: dracut-Teile fehlen:"; comm -23 /tmp/vorher /tmp/nachher; exit 1; fi \
     && lsinitrd "$img" | grep -q "plymouth/themes/auriliux/auriliux.script" \
     && grep -q "plymouth" /tmp/nachher \
-    && ls -la "$img" && rm -f /tmp/vorher /tmp/nachher
+    && chmod 0644 "$img" && ls -la "$img" && rm -f /tmp/vorher /tmp/nachher \
+    && groesse=$(stat -c %s "$img") && if [ "$groesse" -gt 200000000 ]; then echo "FEHLER: initramfs zu groß ($groesse Bytes)"; exit 1; fi
 
 # ── Schrift Cinzel (Titel wie auf der Auriliux-Webseite, SIL Open Font License), fest auf eine Version gepinnt ──
 RUN mkdir -p /usr/share/fonts/auriliux \
