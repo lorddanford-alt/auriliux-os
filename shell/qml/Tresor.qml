@@ -922,7 +922,7 @@ Window {
         Item {
             anchors.centerIn: parent
             width: Math.min(720, tw.width - 80); height: Math.min(560, tw.height - 80)
-            Fase { anchors.fill: parent; fase: 18 }
+            Fase { anchors.fill: parent; fase: 18; flaeche: "#130e06" }
             Column {
                 x: 26; y: 22; width: parent.width - 52; spacing: 10
                 Row {
@@ -973,7 +973,7 @@ Window {
         Item {
             anchors.centerIn: parent
             width: Math.min(760, tw.width - 80); height: rettungSpalte.height + 48
-            Fase { anchors.fill: parent; fase: 18; rand: Qt.rgba(1, 0.37, 0.43, 0.5) }
+            Fase { anchors.fill: parent; fase: 18; flaeche: "#130c07"; rand: Qt.rgba(1, 0.37, 0.43, 0.5) }
             Rectangle { width: 4; height: parent.height; color: Theme.rot }
             Column {
                 id: rettungSpalte
