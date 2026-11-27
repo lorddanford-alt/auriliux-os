@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Claude Code
+Comment=Mit Claude im Terminal programmieren – beim ersten Start mit /login anmelden
+Exec=foot --app-id=claude-code --title=Claude\sCode --working-directory=%h claude
+Icon=claude-code
+Categories=Development;
+StartupWMClass=claude-code

@@ -158,6 +158,9 @@ sleep 8; grim /aus/51-james-weckwort-antwort.png
 HOME=$J auriliux-shell james-befehl status >> /aus/james-befehl.log 2>&1
 kill $D; sleep 1
 { cat "$J/.local/state/auriliux/james.log"; ls -la "$J/.config/auriliux/" "$J/Projekte/Probe" 2>&1; } > /aus/james-protokoll.log 2>&1
+# Claude Code: startet es im fertigen System? (Version, Startprogramm, Eintrag für Dock/Suche)
+{ claude --version; cat /usr/lib/claude-code/version; ls -la /usr/bin/claude /usr/lib/claude-code/
+  grep -E "^(Name|Exec)=" /usr/share/applications/claude-code.desktop; HOME=/tmp/jheim2 DISABLE_AUTOUPDATER=1 timeout 20 claude -p "hallo" 2>&1 | head -3; } > /aus/claude-code.log 2>&1
 # Boot-Intro: Thema, Einstellungen, initramfs (Bilder zum Ansehen in /aus)
 {
   T=/usr/share/plymouth/themes/auriliux

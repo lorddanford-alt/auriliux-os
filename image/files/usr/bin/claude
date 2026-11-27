@@ -1,0 +1,9 @@
+#!/bin/sh
+# Claude Code (von Anthropic). Kommt mit den Auriliux-Updates (jeden Montag neu gebaut) –
+# selbst aktualisieren kann es sich im unveränderlichen System nicht, darum ist das abgeschaltet.
+# Hast du Claude Code zusätzlich selbst installiert (~/.local/bin/claude), wird dieses genommen.
+if [ -x "$HOME/.local/bin/claude" ] && [ "$(readlink -f "$HOME/.local/bin/claude")" != "/usr/lib/claude-code/claude" ]; then
+    exec "$HOME/.local/bin/claude" "$@"
+fi
+export DISABLE_AUTOUPDATER=1
+exec /usr/lib/claude-code/claude "$@"

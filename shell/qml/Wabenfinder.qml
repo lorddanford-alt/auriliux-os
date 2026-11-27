@@ -237,6 +237,7 @@ Window {
             { symbol: "newFile", text: "Neue\nDatei", tun: () => neueDatei(ordner) },
             { symbol: "refresh", text: "Aktuali-\nsieren", tun: () => aktualisieren() },
             { symbol: "terminal", text: "Im\nTerminal", tun: () => System.starte("foot", ["--working-directory=" + ordner]) },
+            { symbol: "claude", text: "Claude\nCode", tun: () => System.starte("foot", ["--app-id=claude-code", "--title=Claude Code", "--working-directory=" + ordner, "claude"]) },
             { symbol: "copy", text: "Pfad\nkopieren", tun: () => { Dateien.pfadKopieren(ordner); hinweis("Pfad kopiert") } }
         ]
     }

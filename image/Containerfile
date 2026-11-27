@@ -43,6 +43,11 @@ RUN cd /tmp && espeak-ng -v de -s 140 -w probe-ja-1.wav "Dschejms, wie spät ist
     && install -Dm644 probe-ja-1.wav /ausgabe/usr/share/auriliux/james/probe/probe-ja.wav \
     && install -Dm644 probe-nein-1.wav /ausgabe/usr/share/auriliux/james/probe/probe-nein.wav
 
+# ── Stufe 1c: Claude Code (offizielles Linux-Programm von Anthropic, Prüfsumme aus dem Release-Verzeichnis) ──
+FROM quay.io/fedora/fedora:45 AS claude
+COPY werkzeuge/claude-code-holen.sh /claude-code-holen.sh
+RUN bash /claude-code-holen.sh /ausgabe && /ausgabe/usr/lib/claude-code/claude --version
+
 # ── Stufe 1b: Boot-Intro (Plymouth-Thema) aus der Aufnahme des Laser-Intros bauen ──
 # Die Aufnahme macht der Cloud-Bau vorher mit Chrome (werkzeuge/intro-aufnehmen.mjs); fehlt sie,
 # entsteht ein ruhiges Thema mit dem fertigen Logo.
@@ -108,6 +113,7 @@ RUN KVER="$(ls /usr/lib/modules | head -1)" \
 COPY image/files/ /
 COPY --from=bau /ausgabe/ /
 COPY --from=intro /ausgabe/ /
+COPY --from=claude /ausgabe/ /
 
 # ── Boot-Intro ins initramfs (dort läuft Plymouth und fragt ggf. nach dem Festplatten-Passwort) ──
 # Danach Gegenprobe: alle bisherigen dracut-Teile sind noch da, und das Thema ist drin.
