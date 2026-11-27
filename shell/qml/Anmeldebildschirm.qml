@@ -115,7 +115,7 @@ Window {
             y: Math.max(30, an.height * 0.42 - height * 0.62)
             fillMode: Image.PreserveAspectFit
             smooth: true; mipmap: true
-            sourceSize.width: 1536
+            sourceSize.width: 1280
             onStatusChanged: schein.requestPaint()
             onYChanged: schein.requestPaint()
         }
@@ -167,7 +167,7 @@ Window {
                     color: Theme.goldHell
                     selectionColor: Theme.gold_a(0.4)
                     font.family: Theme.monoSchrift; font.pixelSize: 16; font.letterSpacing: 4
-                    cursorDelegate: Rectangle { width: 1.5; color: Theme.akzent; visible: feld.activeFocus && !an.fertig
+                    cursorDelegate: Rectangle { width: 1.5; color: Theme.akzent; visible: feld.activeFocus && !an.fertig && feld.text !== ""
                                                 SequentialAnimation on opacity { loops: Animation.Infinite; running: feld.activeFocus
                                                     NumberAnimation { to: 0; duration: 500 } NumberAnimation { to: 1; duration: 500 } } }
                     Keys.onReturnPressed: an.absenden()
