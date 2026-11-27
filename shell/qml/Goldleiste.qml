@@ -27,7 +27,9 @@ Window {
     property bool laedt: false
     property bool netzteil: true
     property bool kiAn: false
-    property bool fokusAn: false
+    // Fokus-Modus des Herzschlags (Vollbild → Hintergrundprogramme eingefroren/gedrosselt)
+    readonly property bool fokusAn: !!(Waechter.herz.fokus && Waechter.herz.fokus.aktiv)
+    readonly property var guardianOffen: (Waechter.status.ereignisse || []).filter(e => !e.erledigt && e.stufe !== "info")
     property var jetzt: new Date()
 
     property var cpuVorher: null
@@ -125,10 +127,19 @@ Window {
         const v = System.umgebung("AURILIUX_VORSCHAU")
         if (v === "menue") menue.oeffnen(4)
         if (v === "suche") appSuche.oeffnen(lupe.mapToItem(null, lupe.width / 2, 0).x)
+        vorneMelden()
     }
 
     AuriliuxMenue { id: menue }
     AppSuche { id: appSuche }
+    GuardianKarte { id: guardianKarte }
+
+    // dem Herzschlag melden, welches Programm vorne ist (Vorrang + Fokus-Modus)
+    function vorneMelden() {
+        const i = Programme.info(Fenster.aktivAppId)
+        Waechter.vorneMelden(i.kennung || Fenster.aktivAppId, Fenster.aktivVollbild)
+    }
+    Connections { target: Fenster; function onAktivGeaendert() { leiste.vorneMelden() } }
 
     // ── Leiste ────────────────────────────────────────────────────────────
     Item {
@@ -288,6 +299,16 @@ Window {
             anchors.rightMargin: 6
             height: parent.height
 
+            // Guardian: offene Meldungen, die eine Entscheidung brauchen
+            Modul {
+                id: schutzModul
+                visible: leiste.guardianOffen.length > 0
+                readonly property color farbe: leiste.guardianOffen.some(e => e.stufe === "hoch") ? Theme.rot : Theme.bernstein
+                onGeklickt: System.starte("auriliux-shell", ["guardian", "ereignisse"])
+                Raute { anchors.verticalCenter: parent.verticalCenter; groesse: 7; gefuellt: true; farbe: schutzModul.farbe }
+                Text { anchors.verticalCenter: parent.verticalCenter; text: "GUARDIAN " + leiste.guardianOffen.length; color: schutzModul.farbe
+                       font.family: Theme.monoSchrift; font.pixelSize: 10; font.letterSpacing: 1.3 }
+            }
             Modul {
                 visible: leiste.fokusAn
                 klickbar: false
@@ -301,6 +322,16 @@ Window {
                 onGeklickt: appSuche.visible ? appSuche.schliessen() : appSuche.oeffnen(sucheModul.mapToItem(null, sucheModul.width / 2, 0).x)
             }
             Trenner {}
+            // Herzschlag: Herz in der Farbe des Zustands, schlägt nur bei Wärme/Überlast; daneben die Temperatur
+            Modul {
+                id: herzModul
+                visible: Waechter.herzDa
+                onGeklickt: System.starte("auriliux-shell", ["guardian", "herzschlag"])
+                Herz { id: herz; anchors.verticalCenter: parent.verticalCenter; groesse: 11; zustand: Waechter.herz.zustand || "ruhig"; scale: herzModul.drueber ? 1.15 : 1 }
+                Text { anchors.verticalCenter: parent.verticalCenter; visible: !!Waechter.herz.temp; text: Math.round(Waechter.herz.temp || 0) + "°"
+                       color: herz.zustand === "ruhig" ? Theme.text : herz.farbe; font.family: Theme.monoSchrift; font.pixelSize: 11 }
+            }
+            Trenner { visible: herzModul.visible }
             Modul {
                 id: cpuModul
                 onGeklickt: System.starte("foot", ["-e", "top"])

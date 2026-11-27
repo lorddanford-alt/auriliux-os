@@ -1,0 +1,33 @@
+# Guardian – Schutz-Zentrale von Auriliux OS (Ausführungs-Schild, Echtzeit-Scanner, USB-Schild,
+# Erpresser-Schild, Autostart-Wächter). Status: /run/auriliux/guardian/status.json
+[Unit]
+Description=Auriliux Guardian (Schutz-Zentrale)
+After=local-fs.target systemd-udevd.service firewalld.service
+Wants=firewalld.service
+
+[Service]
+Type=simple
+ExecStart=/usr/libexec/auriliux/auriliux-guardian
+Restart=always
+RestartSec=2
+# eigene Kontrollgruppe: darin friert der Erpresser-Schild verdächtige Programme ein
+Delegate=yes
+RuntimeDirectory=auriliux/guardian
+RuntimeDirectoryMode=0755
+StateDirectory=auriliux/guardian
+StateDirectoryMode=0700
+OOMScoreAdjust=-800
+# Härtung – Guardian braucht Zugriff auf Benutzerdateien (Quarantäne), /etc (Autostarts) und cgroups
+NoNewPrivileges=yes
+ProtectSystem=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelLogs=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_NETLINK
+
+[Install]
+WantedBy=multi-user.target

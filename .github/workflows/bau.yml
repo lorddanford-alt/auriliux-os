@@ -5,7 +5,7 @@ name: Auriliux OS bauen
 on:
   push:
     branches: [main]
-    paths: ['image/**', 'shell/**', 'werkzeuge/**', '.github/workflows/bau.yml']
+    paths: ['image/**', 'shell/**', 'dienste/**', 'werkzeuge/**', '.github/workflows/bau.yml']
   schedule:
     - cron: '0 4 * * 1'          # jeden Montag 04:00 UTC: neue Sicherheitsupdates einbauen
   workflow_dispatch:
@@ -23,8 +23,23 @@ env:
   IMAGE: ghcr.io/${{ github.repository_owner }}/auriliux-os
 
 jobs:
+  dienste:
+    name: Dienste prüfen (Rust)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Übersetzen und testen
+        working-directory: dienste
+        run: |
+          cargo --version
+          cargo test --release --offline
+          cargo build --release --offline
+          ls -la target/release/auriliux-guardian target/release/auriliux-herzschlag
+
   abbild:
     name: Systemabbild
+    needs: dienste
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:

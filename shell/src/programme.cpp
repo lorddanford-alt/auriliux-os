@@ -7,6 +7,7 @@
 #include <QStandardPaths>
 #include <QTextStream>
 #include <QLocale>
+#include <QRandomGenerator>
 
 namespace {
 struct Eintrag { QString name, symbol, exec, datei, wmKlasse, kategorie; bool zeigen = true; };
@@ -111,6 +112,19 @@ bool Programme::starten(const QString &datei) const
     QStringList teile = QProcess::splitCommand(cmd.trimmed());
     if (teile.isEmpty()) return false;
     const QString prog = teile.takeFirst();
+    // Jedes Programm in einen eigenen Bereich (systemd-Scope) – so kann der Herzschlag dem vorderen Programm
+    // Vorrang geben und im Vollbild die anderen einfrieren. Name: app-auriliux-<kennung>-<zufall>.scope
+    static const bool mitBereich = !QStandardPaths::findExecutable(QStringLiteral("systemd-run")).isEmpty()
+        && QFileInfo::exists(qEnvironmentVariable("XDG_RUNTIME_DIR") + QStringLiteral("/systemd/private"));
+    if (mitBereich) {
+        QString k;
+        for (const QChar c : QFileInfo(datei).completeBaseName())
+            k += (c.unicode() < 128 && (c.isLetterOrNumber() || c == '.' || c == '_' || c == '-')) ? c : QChar('_');
+        const QString einheit = QStringLiteral("app-auriliux-%1-%2").arg(k).arg(QRandomGenerator::global()->bounded(100000, 999999));
+        QStringList a{"--user", "--scope", "--quiet", "--collect", "--slice=app.slice", "--unit=" + einheit, "--", prog};
+        a += teile;
+        if (QProcess::startDetached(QStringLiteral("systemd-run"), a)) return true;
+    }
     return QProcess::startDetached(prog, teile);
 }
 

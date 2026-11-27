@@ -1,0 +1,29 @@
+# Auriliux-Dienste: Guardian (Schutz) und Herzschlag (Leistung) – laufen mit vollen Rechten,
+# deshalb in Rust (speichersicher) und nur mit der Standardbibliothek (keine fremden Pakete aus dem Netz).
+[package]
+name = "auriliux-dienste"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.80"
+publish = false
+
+[lib]
+name = "gemeinsam"
+path = "src/gemeinsam/lib.rs"
+
+[[bin]]
+name = "auriliux-guardian"
+path = "src/guardian/main.rs"
+
+[[bin]]
+name = "auriliux-herzschlag"
+path = "src/herzschlag/main.rs"
+
+[profile.release]
+opt-level = 2
+lto = true
+codegen-units = 1
+strip = true
+# Bei einem Programmfehler sofort ganz beenden (systemd startet neu). Wichtig für den Ausführungs-Schild:
+# ein halb toter Dienst würde Programmstarts aus dem Benutzerordner endlos warten lassen.
+panic = "abort"

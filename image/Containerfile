@@ -1,11 +1,18 @@
 # Auriliux OS – Rezept für das Systemabbild (Bau aus dem Hauptordner: podman build -f image/Containerfile .)
 
-# ── Stufe 1: eigene Programme kompilieren (Goldleiste usw.) ────────────────────
+# ── Stufe 1: eigene Programme kompilieren (Goldleiste usw. + Dienste Guardian/Herzschlag) ──
 FROM quay.io/fedora/fedora:45 AS bau
 RUN dnf -y install --setopt=install_weak_deps=False \
         cmake ninja-build gcc-c++ qt6-qtbase-devel qt6-qtbase-private-devel qt6-qtdeclarative-devel \
-        layer-shell-qt-devel qt6-qtwayland-devel wayland-devel \
+        layer-shell-qt-devel qt6-qtwayland-devel wayland-devel rust cargo \
     && dnf clean all
+# Dienste in Rust (nur Standardbibliothek – nichts wird aus dem Netz nachgeladen)
+COPY dienste /quelle/dienste
+RUN cd /quelle/dienste \
+    && cargo test --release --offline \
+    && cargo build --release --offline \
+    && install -Dm755 target/release/auriliux-guardian /ausgabe/usr/libexec/auriliux/auriliux-guardian \
+    && install -Dm755 target/release/auriliux-herzschlag /ausgabe/usr/libexec/auriliux/auriliux-herzschlag
 COPY shell /quelle/shell
 RUN cmake -S /quelle/shell -B /bauordner -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr \
     && cmake --build /bauordner \
@@ -81,12 +88,16 @@ RUN for d in footclient foot-server; do f=/usr/share/applications/$d.desktop; \
 # ── Name und Einstellungen ──────────────────────────────────────────────────────
 RUN sed -i 's/^PRETTY_NAME=.*/PRETTY_NAME="Auriliux OS (Fedora 45)"/' /usr/lib/os-release \
     && systemctl enable firewalld clamav-freshclam greetd auriliux-kamera-firmware.service \
+       auriliux-guardian.service auriliux-herzschlag.service auriliux-update.timer \
+    && { systemctl mask bootc-fetch-apply-updates.timer 2>/dev/null || true; } \
     && firewall-offline-cmd --set-default-zone=drop \
     && systemctl set-default graphical.target
 
 # USBGuard wird bewusst NICHT hier eingeschaltet: ohne Regeln würde es auch die eingebaute Tastatur und das
 # Trackpad (beim MacBook intern per USB angeschlossen) sperren. Guardian erzeugt beim ersten Start eine Regel
 # für alle eingebauten Geräte und schaltet es erst dann ein.
+# Updates: Fedoras eigener Update-Takt würde nach dem Laden sofort NEU STARTEN (offene Arbeit weg) – er ist
+# deshalb abgeschaltet. auriliux-update.timer lädt täglich und aktiviert erst beim nächsten Neustart.
 
 # Aufräumen (Protokolle und Reste des Baus gehören nicht ins Abbild)
 RUN rm -rf /var/log/dnf5.log* /var/log/akmods /tmp/* /run/* 2>/dev/null; \

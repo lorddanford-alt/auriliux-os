@@ -1,0 +1,36 @@
+# Herzschlag – Leistungs-Wächter: Energieprofile, Wärme-Schutz, Lüfter, Vorrang und Fokus-Modus.
+# Status: /run/auriliux/herzschlag/status.json · beim Beenden wird alles zurückgesetzt.
+[Unit]
+Description=Auriliux Herzschlag (Leistung und Wärme)
+After=local-fs.target
+
+[Service]
+Type=simple
+ExecStart=/usr/libexec/auriliux/auriliux-herzschlag
+ExecStopPost=/usr/libexec/auriliux/auriliux-herzschlag --zuruecksetzen
+Restart=always
+RestartSec=2
+RuntimeDirectory=auriliux/herzschlag
+RuntimeDirectoryMode=0755
+RuntimeDirectoryPreserve=restart
+OOMScoreAdjust=-800
+# Härtung – braucht nur /sys (Prozessor, Lüfter, cgroups) und Lesezugriff auf /proc und /run/user
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=yes
+PrivateNetwork=yes
+RestrictAddressFamilies=AF_UNIX
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelLogs=yes
+ProtectKernelModules=yes
+CapabilityBoundingSet=CAP_DAC_OVERRIDE CAP_DAC_READ_SEARCH CAP_SYS_PTRACE
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,13 @@
+# Lädt das neue Auriliux-Abbild herunter und legt es bereit – OHNE Neustart.
+# Aktiv wird es beim nächsten Neustart (der vorherige Stand bleibt als Rückweg).
+[Unit]
+Description=Auriliux-Update laden (ohne Neustart)
+After=network-online.target
+Wants=network-online.target
+ConditionACPower=true
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/bootc upgrade --quiet
+Nice=19
+IOSchedulingClass=idle

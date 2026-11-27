@@ -60,9 +60,24 @@ sleep 8; grim /aus/9-aufgaben.png
 kill $P; sleep 1
 HOME=$H AURILIUX_VORSCHAU=geraete AURILIUX_GERAETE_DEMO=1 auriliux-shell schreibtisch > /aus/geraete.log 2>&1 & P=$!
 sleep 8; grim /aus/10-geraete.png
-kill $P $L
+kill $P $L; sleep 1
+# Guardian + Herzschlag: beide Dienste einmal echt laufen lassen (Probelauf, mit harmlosen Beispiel-Meldungen)
+/usr/libexec/auriliux/auriliux-guardian --einmal --beispiel > /aus/guardian-status.json 2> /aus/guardian.log
+/usr/libexec/auriliux/auriliux-herzschlag --einmal > /aus/herzschlag-status.json 2> /aus/herzschlag.log
+ls -la /run/auriliux/*/ >> /aus/guardian.log 2>&1
+fallocate -l 140M "$H/Downloads/Film-Archiv.zip" 2>/dev/null || dd if=/dev/zero of="$H/Downloads/Film-Archiv.zip" bs=1M count=140 2>/dev/null
+for t in uebersicht schutz ereignisse herzschlag; do
+  HOME=$H AURILIUX_VORSCHAU=guardian auriliux-shell guardian $t > /aus/guardian-$t.log 2>&1 & P=$!
+  sleep 9; grim /aus/guardian-$t.png
+  kill $P; sleep 1
+done
+mv /aus/guardian-uebersicht.png /aus/11-guardian.png; mv /aus/guardian-schutz.png /aus/12-schutz.png
+mv /aus/guardian-ereignisse.png /aus/13-ereignisse.png; mv /aus/guardian-herzschlag.png /aus/14-herzschlag.png
+HOME=$H AURILIUX_VORSCHAU=karte auriliux-shell goldleiste > /aus/karte.log 2>&1 & P=$!
+sleep 7; grim /aus/15-karte.png
+kill $P
 labwc --exit
 INNEN
 chmod +x /tmp/innen.sh
-timeout 160 labwc -C /tmp/leer -s /tmp/innen.sh > /aus/labwc.log 2>&1
+timeout 260 labwc -C /tmp/leer -s /tmp/innen.sh > /aus/labwc.log 2>&1
 ls -la /aus

@@ -1,6 +1,7 @@
 // Auriliux-Oberfläche – startet einen Teil der Oberfläche:
 //   auriliux-shell goldleiste | golddock | schreibtisch   (feste Bildschirm-Ebenen)
 //   auriliux-shell wabenfinder [ordner]       (normales Fenster)
+//   auriliux-shell guardian [abschnitt]       (Schutz-Zentrale: uebersicht, schutz, ereignisse, herzschlag …)
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QHash>
@@ -20,10 +21,11 @@ int main(int argc, char *argv[])
     };
     const QHash<QString, QString> fenster{
         {QStringLiteral("wabenfinder"), QStringLiteral("Wabenfinder")},
+        {QStringLiteral("guardian"), QStringLiteral("Guardian")},
     };
     const QString teil = argc > 1 ? QString::fromLocal8Bit(argv[1]).toLower() : QStringLiteral("goldleiste");
     if (!ebenen.contains(teil) && !fenster.contains(teil)) {
-        fprintf(stderr, "Unbekannter Teil: %s (bekannt: goldleiste, golddock, schreibtisch, wabenfinder)\n", qPrintable(teil));
+        fprintf(stderr, "Unbekannter Teil: %s (bekannt: goldleiste, golddock, schreibtisch, wabenfinder, guardian)\n", qPrintable(teil));
         return 2;
     }
 
@@ -59,6 +61,8 @@ int main(int argc, char *argv[])
         if (start == QLatin1String("papierkorb")) start = Dateien().papierkorbOrdner();
         engine.setInitialProperties({{QStringLiteral("startPfad"), QFileInfo(start).absoluteFilePath()}});
     }
+    if (teil == QLatin1String("guardian") && argc > 2)
+        engine.setInitialProperties({{QStringLiteral("startAbschnitt"), QString::fromLocal8Bit(argv[2])}});
     engine.loadFromModule(QStringLiteral("Auriliux"), ebenen.value(teil, fenster.value(teil)));
     if (teil == QLatin1String("schreibtisch") && !engine.rootObjects().isEmpty()) {
         // zweite Ebene im selben Programm: senkrechte Aufgaben-Leiste mit Geräte-Kreis

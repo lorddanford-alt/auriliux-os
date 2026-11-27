@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Guardian
+Comment=Schutz, Leistung und Herzschlag
+Exec=auriliux-shell guardian
+Icon=guardian
+Categories=System;Security;
+StartupWMClass=guardian

@@ -1,0 +1,24 @@
+# ClamAV für den Echtzeit-Scanner des Guardian. Braucht rund 1 GB Arbeitsspeicher, deshalb startet
+# Guardian ihn nur, wenn es etwas zu prüfen gibt, und hält ihn nach 10 Minuten Ruhe wieder an.
+[Unit]
+Description=Auriliux Virenscanner (ClamAV, nur bei Bedarf)
+ConditionPathExistsGlob=/var/lib/clamav/main.c?d
+
+[Service]
+Type=simple
+ExecStart=/usr/sbin/clamd -c /etc/clamd.d/auriliux.conf
+User=clamscan
+Group=clamscan
+RuntimeDirectory=clamd.auriliux
+RuntimeDirectoryMode=0750
+Nice=10
+IOSchedulingClass=idle
+MemoryMax=1800M
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateNetwork=yes
+SystemCallArchitectures=native
+LockPersonality=yes
+RestrictRealtime=yes

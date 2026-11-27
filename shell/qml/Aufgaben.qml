@@ -233,7 +233,18 @@ Window {
 
     // ════════ Wächter (Guardian) ════════
     property var waechter: null
-    function waechterLaden() { try { waechter = JSON.parse(System.einstellung("guardian-status")) } catch (e) { waechter = null } }
+    // Farbe/Zahl der Taste: das Schlechtere aus dem Guardian-Dienst (live) und der letzten Prüfung im Guardian-Fenster
+    function waechterLaden() {
+        let eigen = null
+        try { eigen = JSON.parse(System.einstellung("guardian-status")) } catch (e) {}
+        if (eigen && Date.now() - eigen.time > 864e5) eigen = null
+        const d = Waechter.status
+        if (!d || d.score === undefined) { waechter = eigen; return }
+        const rang = { ok: 0, mittel: 1, hoch: 2 }
+        const worst = !eigen || (rang[d.worst] || 0) >= (rang[eigen.worst] || 0) ? d.worst : eigen.worst
+        waechter = { worst: worst, score: eigen ? Math.min(eigen.score, d.score) : d.score }
+    }
+    Connections { target: Waechter; function onStatusGeaendert() { af.waechterLaden() } }
     Timer { interval: 30000; running: true; repeat: true; onTriggered: af.waechterLaden() }
 
     // ════════ Ebene: Klickbereiche & Schicht ════════
@@ -1074,7 +1085,7 @@ Window {
                 symbol: "waechter"; beschriftung: "WÄCHTER"
                 pille: af.waechter && af.waechter.score !== undefined ? String(af.waechter.score) : ""
                 onGeklickt: {
-                    if (!System.starte("auriliux-guardian")) af.melden("Guardian (Wächter) folgt in Kürze", af.schiene + 10, unten.y + y)
+                    if (!System.starte("auriliux-shell", ["guardian"])) af.melden("Guardian ließ sich nicht starten", af.schiene + 10, unten.y + y)
                 }
             }
             HexTaste {
