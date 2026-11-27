@@ -17,7 +17,7 @@ const chrome = spawn(process.env.CHROME || 'google-chrome', [
 process.on('exit', () => { try { chrome.kill(); } catch { /* egal */ } });
 
 let ziel = null;
-for (let i = 0; i < 60 && !ziel; i++) {
+for (let i = 0; i < 160 && !ziel; i++) {
   await schlafen(250);
   try {
     const l = await (await fetch('http://127.0.0.1:9333/json/list')).json();

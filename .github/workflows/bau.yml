@@ -61,7 +61,11 @@ jobs:
           (cd werkzeuge/intro && python3 -m http.server 8765 > /dev/null 2>&1 &)
           sleep 1
           if node -e "process.exit(typeof WebSocket === 'function' ? 0 : 1)"; then N="node"; else N="node --experimental-websocket"; fi
-          timeout 420 $N werkzeuge/intro-aufnehmen.mjs http://127.0.0.1:8765/index.html image/intro-roh
+          for versuch in 1 2 3; do
+            rm -rf /tmp/intro-chrome image/intro-roh/roh-* image/intro-roh/aufnahme.json
+            timeout 420 $N werkzeuge/intro-aufnehmen.mjs http://127.0.0.1:8765/index.html image/intro-roh && break
+            echo "Aufnahme-Versuch $versuch fehlgeschlagen"; pkill -f intro-chrome || true; sleep 3
+          done
           du -sh image/intro-roh
 
       - name: Abbild bauen
