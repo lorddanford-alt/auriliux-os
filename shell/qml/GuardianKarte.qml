@@ -25,7 +25,7 @@ Window {
         const l = offene()
         if (aktuell && ergebnis === "" && !l.some(e => e.id === aktuell.id)) schliessen()
         if (!aktuell) {
-            const neu = l.filter(e => !gezeigt[e.id])
+            const neu = l.filter(e => !gezeigt[e.id]).sort((a, b) => (a.stufe === "hoch" ? 0 : 1) - (b.stufe === "hoch" ? 0 : 1))
             if (neu.length) {
                 const g = Object.assign({}, gezeigt)
                 g[neu[0].id] = true
