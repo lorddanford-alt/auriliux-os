@@ -184,7 +184,7 @@ Window {
                     color: Theme.leise; font.family: Theme.monoSchrift; font.pixelSize: 10; font.letterSpacing: 0.8
                     text: !JamesDienst.eingerichtet ? "NICHT EINGERICHTET"
                         : (JamesDienst.serverName + "  ·  " + (JamesDienst.verbunden ? "VERBUNDEN" : (JamesDienst.verbindungsFehler || "VERBINDE …").toUpperCase())
-                           + "  ·  " + (JamesDienst.dienstLaeuft ? "STIMME BEREIT (SUPER+J)" : "STIMME AUS – DIENST LÄUFT NICHT"))
+                           + "  ·  " + (JamesDienst.dienstLaeuft ? (JamesDienst.weckwortVerfuegbar && JamesDienst.weckwortAn ? "SAG „" + JamesDienst.name.toUpperCase() + "“ ODER SUPER+J" : "STIMME BEREIT (SUPER+J)") : "STIMME AUS – DIENST LÄUFT NICHT"))
                 }
             }
         }
@@ -196,6 +196,10 @@ Window {
             Reiter { text: "Aufträge"; zahl: jw.vorgeschlagen; an: jw.seite === "auftraege"; onGeklickt: { jw.seite = "auftraege"; JamesDienst.anfrage("auftraege", "auftraege") } }
             Item { width: 8; height: 1 }
             Knopf { text: "Webseite"; art: "leise"; aktiv: JamesDienst.eingerichtet; onGeklickt: JamesDienst.webseite() }
+            Knopf { visible: JamesDienst.weckwortVerfuegbar; text: JamesDienst.weckwortAn ? "Weckwort an" : "Weckwort aus"
+                    art: JamesDienst.weckwortAn ? "gold" : "leise"
+                    onGeklickt: { JamesDienst.weckwortAn = !JamesDienst.weckwortAn
+                                  jw.melden(JamesDienst.weckwortAn ? "„" + JamesDienst.name + "“ sagen genügt – erkannt wird hier auf dem Rechner." : "Weckwort aus – Super+J zum Sprechen.") } }
             Knopf { text: "Verbindung"; art: "leise"; onGeklickt: { pruefText.text = ""; serverFeld.text = JamesDienst.server; schluesselFeld.text = ""; jw.einrichtenOffen = true } }
             // KI-Schalter (gleicher Zustand wie in der Goldleiste)
             Item {
@@ -275,7 +279,8 @@ Window {
                 anchors.centerIn: liste_
                 spacing: 10
                 KiStern { anchors.horizontalCenter: parent.horizontalCenter; width: 46; height: 46 }
-                Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Schreib " + JamesDienst.name + " etwas – oder drück Super+J und sprich."
+                Text { anchors.horizontalCenter: parent.horizontalCenter
+                       text: "Schreib " + JamesDienst.name + " etwas – oder " + (JamesDienst.weckwortVerfuegbar && JamesDienst.weckwortAn ? "sag „" + JamesDienst.name + "“." : "drück Super+J und sprich.")
                        color: Theme.leise; font.family: Theme.schrift; font.pixelSize: 14 }
         }
 

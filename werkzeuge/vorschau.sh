@@ -149,6 +149,13 @@ sleep 1; grim /aus/46-james-denkt.png
 sleep 6; grim /aus/47-james-spricht.png
 sleep 24; grim /aus/48-james-danach.png
 HOME=$J auriliux-shell james-befehl status >> /aus/james-befehl.log 2>&1
+# Weckwort: Probesätze so einspeisen, als kämen sie vom Mikrofon – ohne „James“ darf nichts passieren
+HOME=$J auriliux-shell james-befehl probe-wav /usr/share/auriliux/james/probe/probe-nein.wav >> /aus/james-befehl.log 2>&1
+sleep 9; grim /aus/49-james-weckwort-nein.png
+HOME=$J auriliux-shell james-befehl probe-wav /usr/share/auriliux/james/probe/probe-ja.wav >> /aus/james-befehl.log 2>&1
+sleep 4.5; grim /aus/50-james-weckwort.png
+sleep 8; grim /aus/51-james-weckwort-antwort.png
+HOME=$J auriliux-shell james-befehl status >> /aus/james-befehl.log 2>&1
 kill $D; sleep 1
 { cat "$J/.local/state/auriliux/james.log"; ls -la "$J/.config/auriliux/" "$J/Projekte/Probe" 2>&1; } > /aus/james-protokoll.log 2>&1
 # Boot-Intro: Thema, Einstellungen, initramfs (Bilder zum Ansehen in /aus)
@@ -179,5 +186,5 @@ sleep 1; grim /aus/20-entsperrt.png 2>> /aus/sperre.log
 labwc --exit
 INNEN
 chmod +x /tmp/innen.sh
-timeout 660 labwc -C /tmp/leer -s /tmp/innen.sh > /aus/labwc.log 2>&1
+timeout 720 labwc -C /tmp/leer -s /tmp/innen.sh > /aus/labwc.log 2>&1
 ls -la /aus

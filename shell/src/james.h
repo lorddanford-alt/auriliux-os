@@ -54,6 +54,10 @@ class JamesDienst : public QObject
     Q_PROPERTY(qreal pegel READ pegel NOTIFY pegelGeaendert)              // Mikrofon 0..1 (für die Anzeige)
     Q_PROPERTY(QString auftragText READ auftragText NOTIFY auftragGeaendert)  // läuft gerade ein Auftrag?
     Q_PROPERTY(QString vorne READ vorne WRITE setVorne NOTIFY vorneGeaendert) // Programm vorne (für den Server)
+    // Weckwort „James“ (auf diesem Rechner erkannt, ~/.config/auriliux/james-weckwort = an/aus)
+    Q_PROPERTY(bool weckwortVerfuegbar READ weckwortVerfuegbar CONSTANT)
+    Q_PROPERTY(bool weckwortAn READ weckwortAn WRITE setWeckwortAn NOTIFY weckwortGeaendert)
+    Q_PROPERTY(bool lauscht READ lauscht NOTIFY weckwortGeaendert)
 public:
     explicit JamesDienst(QObject *parent = nullptr);
     ~JamesDienst() override;
@@ -73,6 +77,10 @@ public:
     QString auftragText() const { return m_auftragText; }
     QString vorne() const { return m_vorne; }
     void setVorne(const QString &v) { if (v != m_vorne) { m_vorne = v; emit vorneGeaendert(); } }
+    bool weckwortVerfuegbar() const;
+    bool weckwortAn() const { return m_weckwortAn; }
+    void setWeckwortAn(bool an);
+    bool lauscht() const { return m_lauscht; }
 
     /// Server-Adresse und App-Schlüssel speichern (leerer Schlüssel = alten behalten). Fehlertext oder "".
     /// Danach wird die Verbindung geprüft → Signal einrichtungGeprueft.
@@ -105,6 +113,7 @@ signals:
     void pegelGeaendert();
     void auftragGeaendert();
     void vorneGeaendert();
+    void weckwortGeaendert();
     void antwort(const QString &kennung, const QVariantMap &daten);
     void live(const QString &art, const QVariantMap &daten);
     void einrichtungGeprueft(bool ok, const QString &text);
@@ -134,7 +143,12 @@ private:
 
     // Ohr
     void hoerenUmschalten();
-    void ohrStarten(double warteSekunden, bool gespraech);
+    enum OhrArt { Knopf = 0, Gespraech = 1, Lauschen = 2 };
+    void ohrStarten(double warteSekunden, int art);
+    void lauschenPruefen();
+    void weckwortPruefen(const QByteArray &pcm16);
+    void segmentVerwerfen();
+    void probeWav(const QString &pfad);
     void ohrStoppen();
     void tonDaten();
     void tonVerarbeiten(const QByteArray &pcm16);
@@ -187,6 +201,15 @@ private:
     double m_resteZeit = 0;                                              // für die Umrechnung auf 16 kHz
     QByteArray m_vorlauf, m_aufnahme;
     bool m_aufnehmen = false, m_gespraech = false;
+    int m_ohrArt = Knopf;
+    // Weckwort
+    bool m_weckwortAn = true, m_lauscht = false, m_pruefungLaeuft = false, m_segmentGeprueft = false, m_anJames = false;
+    bool m_wartePause = false, m_simuliert = false;
+    int m_segment = 0, m_wartendSegment = -1;
+    double m_ruheSek = 0, m_ruheBeimStart = 0;
+    QByteArray m_wartend, m_probeTon;
+    QElapsedTimer m_letztePruefung;
+    QTimer m_lauschTakt, m_probeTakt;
     double m_rauschen = 0.004, m_stimme = 0;
     int m_lautFolge = 0, m_rahmenProben = 0;
     double m_rahmenSumme = 0, m_stilleSek = 0, m_aufnahmeSek = 0, m_sprachSek = 0, m_lernSumme = 0;

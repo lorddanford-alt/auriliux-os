@@ -1,6 +1,8 @@
 #include "james.h"
 #include "klang.h"
 #include "programme.h"
+#include "weckwort.h"
+#include <QtConcurrent>
 #include <QAudioDevice>
 #include <QAudioFormat>
 #include <QAudioOutput>
@@ -123,6 +125,15 @@ JamesDienst::JamesDienst(QObject *parent) : QObject(parent)
         ohrStoppen();
         if (m_zustand == QLatin1String("hoert") || m_zustand == QLatin1String("gespraech")) blase({}, {});
     });
+    m_lauschTakt.setInterval(2000);
+    connect(&m_lauschTakt, &QTimer::timeout, this, &JamesDienst::lauschenPruefen);
+    connect(&m_probeTakt, &QTimer::timeout, this, [this] {
+        if (!m_simuliert) { m_probeTakt.stop(); return; }
+        const QByteArray stueck = m_probeTon.left(RAHMEN * 2);
+        m_probeTon.remove(0, stueck.size());
+        if (!stueck.isEmpty()) tonVerarbeiten(stueck);
+        if (m_probeTon.isEmpty() && m_simuliert) ohrStoppen();
+    });
     m_sprechWache.setSingleShot(true);
     connect(&m_sprechWache, &QTimer::timeout, this, &JamesDienst::teilGespielt);
 
@@ -157,6 +168,13 @@ void JamesDienst::konfigLaden()
 
 void JamesDienst::schalterLesen()
 {
+    const bool weck = lies(konfigOrdner() + QStringLiteral("/james-weckwort")).trimmed() != QLatin1String("aus");
+    if (weck != m_weckwortAn) {
+        m_weckwortAn = weck;
+        emit weckwortGeaendert();
+        if (!weck) Weckwort::freigeben();
+        if (m_istDienst) { protokoll(weck ? QStringLiteral("Weckwort an") : QStringLiteral("Weckwort aus")); QTimer::singleShot(0, this, &JamesDienst::lauschenPruefen); }
+    }
     const bool neu = lies(schalterPfad()).trimmed() == QLatin1String("an");
     if (neu == m_an) return;
     m_an = neu;
@@ -167,7 +185,9 @@ void JamesDienst::schalterLesen()
         stoppen();
         blase({}, {});
         auftragAbbrechen(QStringLiteral("KI wurde ausgeschaltet"));
+        Weckwort::freigeben();                            // Spracherkennung aus dem Arbeitsspeicher
     }
+    QTimer::singleShot(0, this, &JamesDienst::lauschenPruefen);
     QTimer::singleShot(300, this, &JamesDienst::herzschlag);
 }
 
@@ -431,7 +451,8 @@ void JamesDienst::dienst()
                 if (!s->canReadLine()) { if (s->bytesAvailable() > 8000) s->abort(); return; }
                 const QString b = QString::fromUtf8(s->readLine()).trimmed();
                 QJsonObject st{{QStringLiteral("zustand"), m_zustand}, {QStringLiteral("an"), m_an},
-                               {QStringLiteral("verbunden"), m_verbunden}, {QStringLiteral("auftrag"), m_auftragText}};
+                               {QStringLiteral("verbunden"), m_verbunden}, {QStringLiteral("auftrag"), m_auftragText},
+                               {QStringLiteral("lauscht"), m_lauscht}, {QStringLiteral("weckwort"), Weckwort::verfuegbar() && m_weckwortAn}};
                 s->write("ok " + QJsonDocument(st).toJson(QJsonDocument::Compact) + '\n');
                 s->flush();
                 s->disconnectFromServer();
@@ -452,7 +473,8 @@ void JamesDienst::dienst()
     connect(&m_takt, &QTimer::timeout, this, &JamesDienst::herzschlag);
     m_takt.start();
     QTimer::singleShot(2500, this, &JamesDienst::herzschlag);
-    protokoll(QStringLiteral("Dienst gestartet"));
+    m_lauschTakt.start();
+    protokoll(QStringLiteral("Dienst gestartet") + (Weckwort::verfuegbar() ? QStringLiteral(" (Weckwort eingebaut)") : QString()));
 }
 
 void JamesDienst::schlafSignal(bool schlaeft)
@@ -474,6 +496,7 @@ void JamesDienst::befehlAusfuehren(const QString &b)
     if (b == QLatin1String("hoeren")) hoerenUmschalten();
     else if (b == QLatin1String("stopp")) { stoppen(); blase({}, {}); }
     else if (b.startsWith(QLatin1String("vorlesen "))) vorlesenId(b.mid(9).toInt());
+    else if (b.startsWith(QLatin1String("probe-wav ")) && qEnvironmentVariableIsSet("AURILIUX_VORSCHAU")) probeWav(b.mid(10).trimmed());
     else if (b == QLatin1String("probe") && qEnvironmentVariableIsSet("AURILIUX_VORSCHAU")) {
         // Bau-Prüfung ohne Mikrofon: 1,2 s Ton als „Aufnahme“ an den Server (die Attrappe schreibt einen festen Satz ab)
         QByteArray pcm(RATE * 12 / 10 * 2, Qt::Uninitialized);
@@ -616,19 +639,20 @@ bool JamesDienst::programmOeffnen(const QString &name)
 
 void JamesDienst::hoerenUmschalten()
 {
-    if (beschaeftigt()) { stoppen(); ohrStarten(8, false); return; }
-    if (m_quelle) { ohrStoppen(); blase({}, {}); return; }
-    ohrStarten(8, false);
+    if (beschaeftigt()) { stoppen(); ohrStarten(8, Knopf); return; }
+    if ((m_quelle || m_simuliert) && m_ohrArt != Lauschen) { ohrStoppen(); blase({}, {}); return; }
+    ohrStarten(8, Knopf);
 }
 
-void JamesDienst::ohrStarten(double warteSekunden, bool gespraech)
+void JamesDienst::ohrStarten(double warteSekunden, int art)
 {
-    if (!m_an) { blase(QStringLiteral("hinweis"), m_name + QStringLiteral(" ist ausgeschaltet – Schalter oben in der Goldleiste."), 6); return; }
-    if (!eingerichtet()) { blase(QStringLiteral("hinweis"), m_name + QStringLiteral(" ist noch nicht eingerichtet – öffne das James-Fenster."), 8); return; }
-    if (!m_mikroAn) { blase(QStringLiteral("hinweis"), QStringLiteral("Das Mikrofon ist in den James-Einstellungen ausgeschaltet."), 6); return; }
+    const bool still = art == Lauschen;                 // beim stillen Lauschen keine Hinweise
+    if (!m_an) { if (!still) blase(QStringLiteral("hinweis"), m_name + QStringLiteral(" ist ausgeschaltet – Schalter oben in der Goldleiste."), 6); return; }
+    if (!eingerichtet()) { if (!still) blase(QStringLiteral("hinweis"), m_name + QStringLiteral(" ist noch nicht eingerichtet – öffne das James-Fenster."), 8); return; }
+    if (!m_mikroAn) { if (!still) blase(QStringLiteral("hinweis"), QStringLiteral("Das Mikrofon ist in den James-Einstellungen ausgeschaltet."), 6); return; }
     ohrStoppen();
     const QAudioDevice geraet = QMediaDevices::defaultAudioInput();
-    if (geraet.isNull()) { blase(QStringLiteral("hinweis"), QStringLiteral("Kein Mikrofon gefunden."), 6); return; }
+    if (geraet.isNull()) { if (!still) blase(QStringLiteral("hinweis"), QStringLiteral("Kein Mikrofon gefunden."), 6); return; }
     QAudioFormat f;
     f.setSampleRate(RATE);
     f.setChannelCount(1);
@@ -647,24 +671,32 @@ void JamesDienst::ohrStarten(double warteSekunden, bool gespraech)
     m_strom = m_quelle->start();
     if (!m_strom) {
         m_quelle->deleteLater(); m_quelle = nullptr;
-        blase(QStringLiteral("hinweis"), QStringLiteral("Das Mikrofon lässt sich nicht öffnen."), 6);
+        if (!still) blase(QStringLiteral("hinweis"), QStringLiteral("Das Mikrofon lässt sich nicht öffnen."), 6);
         return;
     }
     connect(m_strom, &QIODevice::readyRead, this, &JamesDienst::tonDaten);
     m_vorlauf.clear(); m_aufnahme.clear();
-    m_aufnehmen = false; m_gespraech = gespraech;
+    m_aufnehmen = false; m_gespraech = art == Gespraech; m_ohrArt = art;
     m_lautFolge = 0; m_rahmenProben = 0; m_rahmenSumme = 0; m_resteZeit = 0;
     m_stilleSek = m_aufnahmeSek = m_sprachSek = m_lernSumme = 0; m_lernAnzahl = 0;
+    m_ruheSek = 0; m_ruheBeimStart = 0; m_wartePause = false; m_anJames = false; m_segmentGeprueft = false;
     m_stimme *= 0.8;                                      // gelernte Stimme langsam vergessen
+    if (art == Lauschen) {
+        if (!m_lauscht) { m_lauscht = true; emit weckwortGeaendert(); protokoll(QStringLiteral("Lauscht auf das Weckwort")); }
+        return;
+    }
+    if (m_lauscht) { m_lauscht = false; emit weckwortGeaendert(); }
     m_ohrFrist.start(int(warteSekunden * 1000));
-    if (gespraech) blase(QStringLiteral("gespraech"), m_blasenText);
+    if (art == Gespraech) blase(QStringLiteral("gespraech"), m_blasenText);
     else { blase(QStringLiteral("hoert"), QStringLiteral("Ich höre …")); klang(QStringLiteral("hoeren")); }
-    protokoll(gespraech ? QStringLiteral("Ohr offen (Gespräch)") : QStringLiteral("Ohr offen"));
+    protokoll(art == Gespraech ? QStringLiteral("Ohr offen (Gespräch)") : QStringLiteral("Ohr offen"));
 }
 
 void JamesDienst::ohrStoppen()
 {
     m_ohrFrist.stop();
+    m_probeTakt.stop();
+    m_simuliert = false;
     if (m_quelle) {
         m_quelle->stop();
         m_quelle->deleteLater();
@@ -672,7 +704,95 @@ void JamesDienst::ohrStoppen()
     }
     m_strom = nullptr;
     m_aufnehmen = false;
+    m_anJames = false;
+    m_ohrArt = Knopf;
+    if (m_lauscht) { m_lauscht = false; emit weckwortGeaendert(); }
     if (m_pegel != 0) { m_pegel = 0; emit pegelGeaendert(); }
+}
+
+// ════════ Weckwort: still lauschen, Schnipsel auf diesem Rechner prüfen ════════
+// Das Mikrofon bleibt offen, solange James an ist und nichts anderes tut. Beginnt jemand nach einer kleinen
+// Pause zu sprechen, prüft die eingebaute Spracherkennung die ersten ~2 Sekunden auf „James“. Nur dann geht
+// die ganze Nachricht an deinen Server – sonst wird der Schnipsel sofort verworfen.
+
+bool JamesDienst::weckwortVerfuegbar() const { return Weckwort::verfuegbar(); }
+
+void JamesDienst::setWeckwortAn(bool an)
+{
+    if (QFile f(konfigOrdner() + QStringLiteral("/james-weckwort")); QDir().mkpath(konfigOrdner()) && f.open(QIODevice::WriteOnly | QIODevice::Truncate))
+        f.write(an ? "an" : "aus");
+    schalterLesen();
+}
+
+void JamesDienst::lauschenPruefen()
+{
+    if (!m_istDienst) return;
+    const bool gesperrt = QFile::exists(laufOrdner() + QStringLiteral("/gesperrt"));
+    const bool soll = m_weckwortAn && Weckwort::verfuegbar() && m_an && eingerichtet() && m_mikroAn && !m_schlaeft && !gesperrt;
+    const bool frei = !beschaeftigt() && (m_zustand.isEmpty() || m_zustand == QLatin1String("hinweis"));
+    if (soll && frei && !m_quelle && !m_simuliert) ohrStarten(0, Lauschen);
+    else if (!soll && m_ohrArt == Lauschen && (m_quelle || m_simuliert)) ohrStoppen();
+}
+
+void JamesDienst::segmentVerwerfen()
+{
+    m_aufnehmen = false;
+    m_aufnahme.clear();
+    m_vorlauf.clear();
+    m_anJames = false;
+    m_wartePause = true;                 // nächster Schnipsel erst nach einer kleinen Sprechpause
+    m_ruheSek = 0;
+    m_lautFolge = 0;
+}
+
+void JamesDienst::weckwortPruefen(const QByteArray &pcm16)
+{
+    m_segmentGeprueft = true;
+    // höchstens eine Prüfung gleichzeitig und nicht öfter als alle 1,5 s (schont den Prozessor)
+    if (m_pruefungLaeuft || (m_letztePruefung.isValid() && m_letztePruefung.elapsed() < 1500)) {
+        if (m_aufnehmen) segmentVerwerfen();
+        return;
+    }
+    m_pruefungLaeuft = true;
+    m_letztePruefung.start();
+    const int seg = m_segment;
+    const QByteArray stueck = pcm16.left(RATE * 2 * 3);
+    QtConcurrent::run([stueck] { double s = 0; const QString t = Weckwort::erkennen(stueck, &s); return qMakePair(t, s); })
+        .then(this, [this, seg](const QPair<QString, double> &e) {
+            m_pruefungLaeuft = false;
+            const bool ja = Weckwort::enthaelt(e.first, m_weckwort);
+            protokoll(QStringLiteral("Weckwort-Prüfung: %1 (%2 s)").arg(ja ? QStringLiteral("ja") : QStringLiteral("nein")).arg(e.second, 0, 'f', 2));
+            if (m_wartendSegment == seg && !m_wartend.isEmpty()) {          // Schnipsel ist schon zu Ende
+                const QByteArray w = m_wartend;
+                m_wartend.clear(); m_wartendSegment = -1;
+                if (ja && m_ohrArt == Lauschen && m_an) { ohrStoppen(); abschreiben(w); }
+                return;
+            }
+            if (seg != m_segment || !m_aufnehmen || m_ohrArt != Lauschen) return;
+            if (ja) {
+                m_anJames = true;
+                blase(QStringLiteral("hoert"), QStringLiteral("Ich höre zu …"));
+            } else {
+                segmentVerwerfen();
+            }
+        });
+}
+
+void JamesDienst::probeWav(const QString &pfad)
+{
+    // Bau-Prüfung ohne Mikrofon: eine WAV-Datei wird in Echtzeit so eingespeist, als käme sie vom Mikrofon
+    const QByteArray ton = Weckwort::wavLesen(pfad);
+    if (ton.isEmpty()) { protokoll(QStringLiteral("Probe: WAV unlesbar")); return; }
+    stoppen();
+    ohrStoppen();
+    m_vorlauf.clear(); m_aufnahme.clear();
+    m_aufnehmen = false; m_gespraech = false; m_ohrArt = Lauschen; m_simuliert = true;
+    m_lautFolge = 0; m_rahmenProben = 0; m_rahmenSumme = 0;
+    m_stilleSek = m_aufnahmeSek = m_sprachSek = m_lernSumme = 0; m_lernAnzahl = 0;
+    m_ruheSek = 1; m_ruheBeimStart = 0; m_wartePause = false; m_anJames = false; m_segmentGeprueft = false;
+    m_probeTon = QByteArray(RATE * 2 / 2, '\0') + ton + QByteArray(RATE * 2 * 5, '\0');      // Stille davor und danach
+    m_lauscht = true; emit weckwortGeaendert();
+    m_probeTakt.start(30);
 }
 
 void JamesDienst::tonDaten()
@@ -725,7 +845,7 @@ void JamesDienst::tonVerarbeiten(const QByteArray &pcm16)
         if (m_vorlauf.size() > RATE * 2 * 4 / 10) m_vorlauf.remove(0, m_vorlauf.size() - RATE * 2 * 4 / 10);   // 0,4 s Vorlauf
     }
     const int n = int(pcm16.size() / 2);
-    for (int i = 0; i < n && m_quelle; ++i) {
+    for (int i = 0; i < n && (m_quelle || m_simuliert); ++i) {
         const double v = qFromLittleEndian<qint16>(pcm16.constData() + 2 * i) / 32768.0;
         m_rahmenSumme += v * v;
         if (++m_rahmenProben < RAHMEN) continue;
@@ -738,14 +858,20 @@ void JamesDienst::tonVerarbeiten(const QByteArray &pcm16)
         if (laut && m_stimme > 0 && rms < m_stimme * 0.35) laut = false;     // viel leiser als du: Fernseher/Video
         if (!m_aufnehmen) {
             if (!laut) m_rauschen = rms < m_rauschen ? m_rauschen * 0.9 + rms * 0.1 : qMin(0.05, m_rauschen * 0.995 + rms * 0.005);
+            if (laut) { if (m_lautFolge == 0) m_ruheBeimStart = m_ruheSek; m_ruheSek = 0; }
+            else m_ruheSek += 0.03;
             m_lautFolge = laut ? m_lautFolge + 1 : 0;
-            if (m_lautFolge >= 3) {                       // ~90 ms Sprache → Aufnahme beginnt (mit Vorlauf)
+            // ~90 ms Sprache → Aufnahme beginnt (mit Vorlauf); beim Lauschen nach einem verworfenen Schnipsel
+            // erst wieder, wenn davor kurz Ruhe war (Weckwort steht am Satzanfang)
+            if (m_lautFolge >= 3 && (!m_wartePause || m_ruheBeimStart >= 0.4)) {
                 m_aufnehmen = true;
+                m_wartePause = false;
                 m_aufnahme = m_vorlauf;
                 m_vorlauf.clear();
                 m_ohrFrist.stop();
                 m_stilleSek = 0; m_aufnahmeSek = 0; m_sprachSek = 0;
-                blase(QStringLiteral("hoert"), QStringLiteral("Ich höre zu …"));
+                m_anJames = false; m_segmentGeprueft = false; ++m_segment;
+                if (m_ohrArt != Lauschen) blase(QStringLiteral("hoert"), QStringLiteral("Ich höre zu …"));
             }
             continue;
         }
@@ -758,6 +884,11 @@ void JamesDienst::tonVerarbeiten(const QByteArray &pcm16)
         } else {
             m_stilleSek += 0.03;
         }
+        // Lauschen: nach gut 2 s den Anfang auf „James“ prüfen (läuft nebenher weiter)
+        if (m_ohrArt == Lauschen && !m_segmentGeprueft && !m_anJames && m_aufnahmeSek >= 2.2) weckwortPruefen(m_aufnahme);
+        if (!m_aufnehmen) continue;                       // Schnipsel wurde gerade verworfen
+        // ohne Weckwort nicht ewig mitschneiden (z. B. Fernseher): nach 8 s verwerfen
+        if (m_ohrArt == Lauschen && !m_anJames && m_aufnahmeSek >= 8 && !m_pruefungLaeuft) { segmentVerwerfen(); continue; }
         if (m_stilleSek >= qBound(0.8, m_pause, 4.0) || m_aufnahmeSek >= 60) { aufnahmeFertig(); return; }
     }
 }
@@ -769,6 +900,17 @@ void JamesDienst::aufnahmeFertig()
     const int stilleBytes = int(qMax(0.0, m_stilleSek - 0.25) * RATE) * 2;
     if (stilleBytes > 0 && stilleBytes < pcm.size()) pcm.chop(stilleBytes);
     const bool gespraech = m_gespraech;
+    if (m_ohrArt == Lauschen) {
+        const bool anJames = m_anJames, geprueft = m_segmentGeprueft;
+        const int seg = m_segment;
+        m_aufnehmen = false; m_aufnahme.clear(); m_vorlauf.clear(); m_stilleSek = 0; m_lautFolge = 0; m_ruheSek = 0.3;
+        if (sprache < 0.3) return;                         // nur ein Geräusch – weiter lauschen
+        if (anJames) { ohrStoppen(); abschreiben(pcm); return; }
+        m_wartend = pcm; m_wartendSegment = seg;          // Ergebnis der Prüfung entscheidet
+        if (!geprueft) weckwortPruefen(pcm);
+        if (!m_pruefungLaeuft) { m_wartend.clear(); m_wartendSegment = -1; }
+        return;
+    }
     ohrStoppen();
     if (sprache < 0.35) {                                  // nur ein Geräusch
         if (gespraech) blase({}, {});
@@ -825,7 +967,7 @@ void JamesDienst::gehoert(QString text)
     text = text.trimmed();
     if (!text.isEmpty()) text[0] = text.at(0).toUpper();
     if (text.size() < 2) {
-        ohrStarten(qMax(8.0, m_gespraechSekunden), false);
+        ohrStarten(qMax(8.0, m_gespraechSekunden), Knopf);
         blase(QStringLiteral("hoert"), QStringLiteral("Ja? Ich höre …"));
         return;
     }
@@ -1006,7 +1148,7 @@ void JamesDienst::antwortFertig()
     // kurz warten (Nachhall), dann direkt weiter zuhören – du kannst ohne Super+J antworten
     QTimer::singleShot(400, this, [this, runde] {
         if (runde != m_runde || beschaeftigt() || m_quelle) return;
-        if (m_an && m_gespraechSekunden > 0 && m_mikroAn) ohrStarten(m_gespraechSekunden, true);
+        if (m_an && m_gespraechSekunden > 0 && m_mikroAn) ohrStarten(m_gespraechSekunden, Gespraech);
         else m_blasenUhr.start(6000);
     });
 }

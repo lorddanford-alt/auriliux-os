@@ -22,6 +22,7 @@
 #include "sperrwache.h"
 #include "charakterspeicher.h"
 #include "james.h"
+#include "weckwort.h"
 #include <QLocalServer>
 #include <QLocalSocket>
 #include <QWindow>
@@ -46,6 +47,7 @@ int main(int argc, char *argv[])
         {QStringLiteral("james"), QStringLiteral("James")},
     };
     const QString teil = argc > 1 ? QString::fromLocal8Bit(argv[1]).toLower() : QStringLiteral("goldleiste");
+    if (teil == QLatin1String("james-weckwort-test")) return Weckwort::test(argc, argv);
     if (teil == QLatin1String("james-befehl")) {
         QCoreApplication app(argc, argv);
         return JamesDienst::befehlSenden(argc > 2 ? QString::fromLocal8Bit(argv[2]) + (argc > 3 ? QStringLiteral(" ") + QString::fromLocal8Bit(argv[3]) : QString())

@@ -37,7 +37,7 @@ qt_add_qml_module(auriliux-shell
     URI Auriliux
     VERSION 1.0
     SOURCES src/system.h src/system.cpp src/ebene.h src/ebene.cpp src/fenster.h src/fenster.cpp src/programme.h src/programme.cpp src/dateien.h src/dateien.cpp src/geraete.h src/geraete.cpp src/waechter.h src/waechter.cpp src/anmeldung.h src/anmeldung.cpp
-            src/sperre.h src/sperre.cpp src/sperrwache.h src/sperrwache.cpp src/steuerung.h src/steuerung.cpp src/charakterspeicher.h src/charakterspeicher.cpp src/tresordienst.h src/tresordienst.cpp src/klang.h src/klang.cpp src/james.h src/james.cpp
+            src/sperre.h src/sperre.cpp src/sperrwache.h src/sperrwache.cpp src/steuerung.h src/steuerung.cpp src/charakterspeicher.h src/charakterspeicher.cpp src/tresordienst.h src/tresordienst.cpp src/klang.h src/klang.cpp src/james.h src/james.cpp src/weckwort.h src/weckwort.cpp
     QML_FILES ${AURILIUX_QML}
 )
 
@@ -51,4 +51,23 @@ target_include_directories(auriliux-shell PRIVATE src)
 target_compile_options(auriliux-shell PRIVATE -Wall -Wextra)
 target_link_libraries(auriliux-shell PRIVATE Qt6::Gui Qt6::Quick Qt6::Qml Qt6::WaylandClient Qt6::WaylandClientPrivate
                       Qt6::Concurrent Qt6::DBus Qt6::Network Qt6::Multimedia LayerShellQt::Interface pam)
+
+# Weckwort „James“: Spracherkennung whisper.cpp fest eingebaut (nur Prozessor, mit AVX2/FMA des i5 aus 2015).
+# Ohne Quellordner wird ohne Weckwort gebaut – James hört dann nur auf Super+J.
+set(AURILIUX_WHISPER "" CACHE PATH "Quellordner von whisper.cpp")
+if(AURILIUX_WHISPER AND EXISTS "${AURILIUX_WHISPER}/CMakeLists.txt")
+    set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+    foreach(aus WHISPER_BUILD_TESTS WHISPER_BUILD_EXAMPLES WHISPER_BUILD_SERVER WHISPER_CURL WHISPER_SDL2 WHISPER_FFMPEG
+                GGML_NATIVE GGML_OPENMP GGML_CCACHE GGML_AVX512 GGML_AVX_VNNI GGML_AMX_TILE GGML_AMX_INT8 GGML_AMX_BF16 GGML_BACKEND_DL GGML_CPU_ALL_VARIANTS)
+        set(${aus} OFF CACHE BOOL "" FORCE)
+    endforeach()
+    foreach(an GGML_SSE42 GGML_AVX GGML_AVX2 GGML_FMA GGML_F16C GGML_BMI2)
+        set(${an} ON CACHE BOOL "" FORCE)
+    endforeach()
+    add_subdirectory(${AURILIUX_WHISPER} whisper EXCLUDE_FROM_ALL)
+    target_link_libraries(auriliux-shell PRIVATE whisper)
+    target_compile_definitions(auriliux-shell PRIVATE AURILIUX_WECKWORT=1)
+    message(STATUS "Weckwort: whisper.cpp aus ${AURILIUX_WHISPER}")
+endif()
+
 install(TARGETS auriliux-shell RUNTIME DESTINATION bin)
