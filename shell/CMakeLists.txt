@@ -4,7 +4,7 @@ project(auriliux-shell VERSION 0.1 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt6 6.5 REQUIRED COMPONENTS Gui Quick Qml WaylandClient Concurrent DBus)
+find_package(Qt6 6.5 REQUIRED COMPONENTS Gui Quick Qml WaylandClient Concurrent DBus Network Multimedia)
 # Bildschirmsperre braucht die inneren Teile von Qt-Wayland (eigene Fensterart „Sperrfläche“)
 find_package(Qt6 QUIET COMPONENTS WaylandClientPrivate)
 find_package(PkgConfig)
@@ -25,7 +25,7 @@ set(AURILIUX_QML
     qml/KiStern.qml qml/AppSuche.qml qml/DockKreis.qml qml/Golddock.qml
     qml/Wabe.qml qml/WabenSymbol.qml qml/WabenHintergrund.qml qml/Wabenfinder.qml
     qml/Schreibtisch.qml qml/Aufgaben.qml
-    qml/Fase.qml qml/Knopf.qml qml/Herz.qml qml/Guardian.qml qml/GuardianKarte.qml qml/Goldtor.qml qml/Anmeldebildschirm.qml qml/Sperrbildschirm.qml qml/Zentrale.qml qml/Charakter.qml qml/Tresor.qml)
+    qml/Fase.qml qml/Knopf.qml qml/Herz.qml qml/Guardian.qml qml/GuardianKarte.qml qml/Goldtor.qml qml/Anmeldebildschirm.qml qml/Sperrbildschirm.qml qml/Zentrale.qml qml/Charakter.qml qml/Tresor.qml qml/James.qml qml/JamesBlase.qml)
 set_source_files_properties(qml/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 # Dateien liegen im Ordner qml/, sollen im Modul aber direkt neben qmldir liegen – sonst sehen sie
 # die eigenen Typen (Theme, System, Ebene) nicht
@@ -37,7 +37,7 @@ qt_add_qml_module(auriliux-shell
     URI Auriliux
     VERSION 1.0
     SOURCES src/system.h src/system.cpp src/ebene.h src/ebene.cpp src/fenster.h src/fenster.cpp src/programme.h src/programme.cpp src/dateien.h src/dateien.cpp src/geraete.h src/geraete.cpp src/waechter.h src/waechter.cpp src/anmeldung.h src/anmeldung.cpp
-            src/sperre.h src/sperre.cpp src/sperrwache.h src/sperrwache.cpp src/steuerung.h src/steuerung.cpp src/charakterspeicher.h src/charakterspeicher.cpp src/tresordienst.h src/tresordienst.cpp src/klang.h src/klang.cpp
+            src/sperre.h src/sperre.cpp src/sperrwache.h src/sperrwache.cpp src/steuerung.h src/steuerung.cpp src/charakterspeicher.h src/charakterspeicher.cpp src/tresordienst.h src/tresordienst.cpp src/klang.h src/klang.cpp src/james.h src/james.cpp
     QML_FILES ${AURILIUX_QML}
 )
 
@@ -50,5 +50,5 @@ qt6_generate_wayland_protocol_client_sources(auriliux-shell
 target_include_directories(auriliux-shell PRIVATE src)
 target_compile_options(auriliux-shell PRIVATE -Wall -Wextra)
 target_link_libraries(auriliux-shell PRIVATE Qt6::Gui Qt6::Quick Qt6::Qml Qt6::WaylandClient Qt6::WaylandClientPrivate
-                      Qt6::Concurrent Qt6::DBus LayerShellQt::Interface pam)
+                      Qt6::Concurrent Qt6::DBus Qt6::Network Qt6::Multimedia LayerShellQt::Interface pam)
 install(TARGETS auriliux-shell RUNTIME DESTINATION bin)

@@ -112,7 +112,8 @@ Window {
     }
 
     Timer { interval: 2000; running: true; repeat: true; triggeredOnStart: true
-            onTriggered: { leiste.cpuMessen(); leiste.ramMessen(); leiste.netzMessen(); leiste.akkuMessen() } }
+            onTriggered: { leiste.cpuMessen(); leiste.ramMessen(); leiste.netzMessen(); leiste.akkuMessen()
+                           leiste.kiAn = System.einstellung("ki-schalter").trim() === "an" } }   // auch vom James-Fenster umschaltbar
     Timer { interval: 10000; running: true; repeat: true; triggeredOnStart: true; onTriggered: leiste.wlanFragen() }
     Timer { interval: 1000; running: true; repeat: true; onTriggered: leiste.jetzt = new Date() }
     // Lichtwelle: alle 25 s, nur am Netzteil

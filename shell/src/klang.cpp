@@ -55,8 +55,26 @@ std::vector<double> schlag(double dauer, double f0, double f1, double abkling)
     return t;
 }
 
+/// weicher Glockenton (James: „ich höre“)
+std::vector<double> glocke(double dauer, double f, double abkling)
+{
+    std::vector<double> t(size_t(dauer * RATE));
+    for (size_t i = 0; i < t.size(); ++i) {
+        const double x = double(i) / RATE;
+        const double an = std::min(1.0, x / 0.006);
+        t[i] = an * std::exp(-x / abkling) * (std::sin(2 * PI * f * x) + 0.25 * std::sin(2 * PI * f * 2.0 * x) + 0.08 * std::sin(2 * PI * f * 3.01 * x));
+    }
+    return t;
+}
+
 Ton erzeugen(const QString &name)
 {
+    if (name == QLatin1String("hoeren")) {
+        Ton t(0.5);
+        t.addiere(0, glocke(0.4, 784, 0.12), 0.45);
+        t.addiere(0.09, glocke(0.4, 1175, 0.14), 0.5);
+        return t;
+    }
     if (name == QLatin1String("klick")) {
         Ton t(0.03);
         t.addiere(0, klick(0.03, 0.0025, {3100, 5200, 7900}, 0.45), 0.55);
@@ -139,7 +157,7 @@ QByteArray wav(const Ton &t)
 
 QUrl Klang::datei(const QString &name) const
 {
-    static const QStringList bekannt{"klick", "rast", "fehler", "ventil", "riegel", "tuer"};
+    static const QStringList bekannt{"klick", "rast", "fehler", "ventil", "riegel", "tuer", "hoeren"};
     if (!bekannt.contains(name)) return {};
     QString ordner = qEnvironmentVariable("XDG_RUNTIME_DIR");
     if (ordner.isEmpty()) ordner = QStandardPaths::writableLocation(QStandardPaths::CacheLocation);

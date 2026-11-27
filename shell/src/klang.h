@@ -13,6 +13,6 @@ class Klang : public QObject
     QML_SINGLETON
 public:
     explicit Klang(QObject *parent = nullptr) : QObject(parent) {}
-    /// "klick" | "rast" | "fehler" | "ventil" | "riegel" | "tuer" → Datei-Adresse (leer bei Fehler)
+    /// "klick" | "rast" | "fehler" | "ventil" | "riegel" | "tuer" | "hoeren" (James) → Datei-Adresse (leer bei Fehler)
     Q_INVOKABLE QUrl datei(const QString &name) const;
 };

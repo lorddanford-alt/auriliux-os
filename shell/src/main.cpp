@@ -7,6 +7,9 @@
 //   auriliux-shell tresor [versionen <pfad> | rettung <zeit-ms>]   (Tresor: Schnappschüsse, Sicherung, Zurückholen – mit Drehcode)
 //   auriliux-shell sperre                     (Bildschirmsperre – besser über /usr/libexec/auriliux/sperren)
 //   auriliux-shell sperrwache                 (unsichtbar: sperrt bei Leerlauf, vor dem Ruhezustand, auf Befehl)
+//   auriliux-shell james                      (James-Fenster: Gespräch, Aufträge, Einrichtung – läuft nur einmal)
+//   auriliux-shell james-dienst               (James im Hintergrund: Herzschlag, Stimme, Aufträge + Sprechblase)
+//   auriliux-shell james-befehl hoeren|stopp  (Befehl an den laufenden James-Dienst, z. B. von Super+J)
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QHash>
@@ -18,6 +21,10 @@
 #include "dateien.h"
 #include "sperrwache.h"
 #include "charakterspeicher.h"
+#include "james.h"
+#include <QLocalServer>
+#include <QLocalSocket>
+#include <QWindow>
 #include <QScreen>
 #include <QPointer>
 
@@ -28,6 +35,7 @@ int main(int argc, char *argv[])
         {QStringLiteral("golddock"), QStringLiteral("Golddock")},
         {QStringLiteral("schreibtisch"), QStringLiteral("Schreibtisch")},   // + Aufgaben-Leiste links
         {QStringLiteral("anmeldung"), QStringLiteral("Anmeldebildschirm")},  // goldener Login (von greetd gestartet)
+        {QStringLiteral("james-dienst"), QStringLiteral("JamesBlase")},      // James im Hintergrund + Sprechblase
     };
     const QHash<QString, QString> fenster{
         {QStringLiteral("wabenfinder"), QStringLiteral("Wabenfinder")},
@@ -35,11 +43,17 @@ int main(int argc, char *argv[])
         {QStringLiteral("zentrale"), QStringLiteral("Zentrale")},
         {QStringLiteral("charakter"), QStringLiteral("Charakter")},
         {QStringLiteral("tresor"), QStringLiteral("Tresor")},
+        {QStringLiteral("james"), QStringLiteral("James")},
     };
     const QString teil = argc > 1 ? QString::fromLocal8Bit(argv[1]).toLower() : QStringLiteral("goldleiste");
+    if (teil == QLatin1String("james-befehl")) {
+        QCoreApplication app(argc, argv);
+        return JamesDienst::befehlSenden(argc > 2 ? QString::fromLocal8Bit(argv[2]) + (argc > 3 ? QStringLiteral(" ") + QString::fromLocal8Bit(argv[3]) : QString())
+                                                  : QStringLiteral("hoeren"));
+    }
     const bool sperre = teil == QLatin1String("sperre"), wache = teil == QLatin1String("sperrwache");
     if (!ebenen.contains(teil) && !fenster.contains(teil) && !sperre && !wache) {
-        fprintf(stderr, "Unbekannter Teil: %s (bekannt: goldleiste, golddock, schreibtisch, anmeldung, wabenfinder, guardian, zentrale, charakter, tresor, sperre, sperrwache)\n", qPrintable(teil));
+        fprintf(stderr, "Unbekannter Teil: %s (bekannt: goldleiste, golddock, schreibtisch, anmeldung, wabenfinder, guardian, zentrale, charakter, tresor, james, james-dienst, james-befehl, sperre, sperrwache)\n", qPrintable(teil));
         return 2;
     }
 
@@ -94,6 +108,22 @@ int main(int argc, char *argv[])
         });
         return app.exec();
     }
+    // James-Fenster nur einmal: läuft es schon, wird es nach vorne geholt
+    QString fensterSocket;
+    if (teil == QLatin1String("james")) {
+        QString lauf = qEnvironmentVariable("XDG_RUNTIME_DIR");
+        if (lauf.isEmpty()) lauf = QDir::tempPath();
+        QDir().mkpath(lauf + QStringLiteral("/auriliux"));
+        fensterSocket = lauf + QStringLiteral("/auriliux/james-fenster.sock");
+        QLocalSocket s;
+        s.connectToServer(fensterSocket);
+        if (s.waitForConnected(300)) {
+            s.write("zeigen\n");
+            s.waitForBytesWritten(300);
+            return 0;
+        }
+        app.setQuitOnLastWindowClosed(true);
+    }
     if (teil == QLatin1String("wabenfinder")) {
         QString start = argc > 2 ? QString::fromLocal8Bit(argv[2]) : QDir::homePath();
         if (start == QLatin1String("papierkorb")) start = Dateien().papierkorbOrdner();
@@ -113,6 +143,20 @@ int main(int argc, char *argv[])
             tisch->setProperty("aufgaben", QVariant::fromValue(aufgaben));
             aufgaben->setProperty("tisch", QVariant::fromValue(tisch));
         }
+    }
+    if (!fensterSocket.isEmpty() && !engine.rootObjects().isEmpty()) {
+        auto *srv = new QLocalServer(&app);
+        QLocalServer::removeServer(fensterSocket);
+        srv->setSocketOptions(QLocalServer::UserAccessOption);
+        srv->listen(fensterSocket);
+        QPointer<QWindow> w = qobject_cast<QWindow *>(engine.rootObjects().constFirst());
+        QObject::connect(srv, &QLocalServer::newConnection, &app, [srv, w] {
+            while (QLocalSocket *s = srv->nextPendingConnection()) {
+                QObject::connect(s, &QLocalSocket::disconnected, s, &QObject::deleteLater);
+                s->disconnectFromServer();
+                if (w) { w->show(); w->raise(); w->requestActivate(); }
+            }
+        });
     }
     if (qEnvironmentVariableIsSet("AURILIUX_DIAGNOSE"))
         fprintf(stderr, "auriliux-shell: %lld Hauptobjekt(e) geladen\n", static_cast<long long>(engine.rootObjects().size()));

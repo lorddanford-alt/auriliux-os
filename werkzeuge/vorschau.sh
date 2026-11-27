@@ -123,6 +123,34 @@ HOME=$H AURILIUX_VORSCHAU=tresor-oeffnet auriliux-shell tresor > /aus/tresor-oef
 sleep 3; grim /aus/tresor-oeffnet-1.png; sleep 1.6; grim /aus/tresor-oeffnet-2.png; kill $P; sleep 1
 n=30; for t in tresor tresor-neu tresor-fehler tresor-oeffnet-1 tresor-oeffnet-2 tresor-offen tresor-versionen tresor-rettung; do mv /aus/$t.png /aus/$n-$t.png; n=$((n+1)); done
 /usr/libexec/auriliux/auriliux-tresor --einmal > /aus/tresor-status.json 2> /aus/tresor-dienst.log
+# ── James: Fenster + Dienst gegen die Attrappe des Servers (läuft auf dem Bau-Rechner, 127.0.0.1:8766) ──
+J=/tmp/jheim; mkdir -p "$J/.config/auriliux" "$J/.local/bin"
+HOME=$J auriliux-shell james > /aus/james-einrichten.log 2>&1 & P=$!
+sleep 6; grim /aus/40-james-einrichten.png; kill $P; sleep 1
+printf '{"server":"http://127.0.0.1:8766/jamesgehirn/","token":"%s"}\n' "${JAMES_PROBE_TOKEN:-}" > "$J/.config/auriliux/james.json"
+chmod 600 "$J/.config/auriliux/james.json"; echo an > "$J/.config/auriliux/ki-schalter"
+# Probe-„Claude Code“: liest nur und meldet sich (das echte wird später einmalig installiert)
+printf '#!/bin/sh\necho "Probe-Claude im Ordner $(pwd): Auftrag gelesen."\necho "Zusammenfassung: nichts verändert."\n' > "$J/.local/bin/claude"
+chmod +x "$J/.local/bin/claude"
+HOME=$J AURILIUX_VORSCHAU=james auriliux-shell james-dienst > /aus/james-dienst.log 2>&1 & D=$!
+sleep 5; grim /aus/41-james-hinweis.png
+HOME=$J AURILIUX_VORSCHAU=james-senden auriliux-shell james > /aus/james.log 2>&1 & P=$!
+sleep 6; grim /aus/42-james-schreibt.png
+sleep 14; grim /aus/43-james.png
+HOME=$J auriliux-shell james >> /aus/james.log 2>&1; echo "zweiter Start: Code $?" >> /aus/james.log
+kill $P; sleep 1
+HOME=$J AURILIUX_VORSCHAU=james-auftraege auriliux-shell james > /aus/james-auftraege.log 2>&1 & P=$!
+sleep 7; grim /aus/44-james-auftraege.png; kill $P; sleep 1
+# Stimme ohne Mikrofon: Super+J (kein Mikrofon im Bau → Hinweis), dann eine Probe-Aufnahme direkt an den Dienst
+HOME=$J auriliux-shell james-befehl hoeren > /aus/james-befehl.log 2>&1; echo "hoeren: Code $?" >> /aus/james-befehl.log
+sleep 1.5; grim /aus/45-james-hoert.png
+HOME=$J auriliux-shell james-befehl probe >> /aus/james-befehl.log 2>&1
+sleep 1; grim /aus/46-james-denkt.png
+sleep 6; grim /aus/47-james-spricht.png
+sleep 24; grim /aus/48-james-danach.png
+HOME=$J auriliux-shell james-befehl status >> /aus/james-befehl.log 2>&1
+kill $D; sleep 1
+{ cat "$J/.local/state/auriliux/james.log"; ls -la "$J/.config/auriliux/" "$J/Projekte/Probe" 2>&1; } > /aus/james-protokoll.log 2>&1
 # Boot-Intro: Thema, Einstellungen, initramfs (Bilder zum Ansehen in /aus)
 {
   T=/usr/share/plymouth/themes/auriliux
@@ -151,5 +179,5 @@ sleep 1; grim /aus/20-entsperrt.png 2>> /aus/sperre.log
 labwc --exit
 INNEN
 chmod +x /tmp/innen.sh
-timeout 540 labwc -C /tmp/leer -s /tmp/innen.sh > /aus/labwc.log 2>&1
+timeout 660 labwc -C /tmp/leer -s /tmp/innen.sh > /aus/labwc.log 2>&1
 ls -la /aus

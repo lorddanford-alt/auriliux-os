@@ -78,7 +78,12 @@ jobs:
         continue-on-error: true
         run: |
           mkdir -p vorschau
-          sudo podman run --rm -v "$PWD/werkzeuge:/werkzeuge:ro" -v "$PWD/vorschau:/aus" "$IMAGE:latest" bash /werkzeuge/vorschau.sh
+          # James: Attrappe des KI-Servers auf diesem Bau-Rechner (Wegwerf-Schlüssel nur für diesen Lauf)
+          JAMES_PROBE_TOKEN=$(openssl rand -hex 24)
+          python3 werkzeuge/james-attrappe.py --port 8766 --token "$JAMES_PROBE_TOKEN" --log "$PWD/vorschau/james-attrappe.log" &
+          sudo podman run --rm --network host -e JAMES_PROBE_TOKEN="$JAMES_PROBE_TOKEN" \
+              -v "$PWD/werkzeuge:/werkzeuge:ro" -v "$PWD/vorschau:/aus" "$IMAGE:latest" bash /werkzeuge/vorschau.sh
+          echo "── James-Attrappe ──"; cat vorschau/james-attrappe.log || true
 
       - name: Vorschau hochladen
         uses: actions/upload-artifact@v4

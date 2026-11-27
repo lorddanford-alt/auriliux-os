@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=James
+Comment=Dein KI-Assistent: Gespräch, Aufträge an Claude Code, Stimme mit Super+J
+Exec=auriliux-james
+Icon=james
+Categories=Utility;
+StartupWMClass=james

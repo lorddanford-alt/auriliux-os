@@ -1,0 +1,6 @@
+#!/bin/sh
+# James öffnen – oder den James-Dienst zuhören lassen (Super+J): auriliux-james hoeren | stopp
+case "${1:-}" in
+    hoeren|stopp) exec auriliux-shell james-befehl "$1" ;;
+    *) exec auriliux-shell james ;;
+esac
