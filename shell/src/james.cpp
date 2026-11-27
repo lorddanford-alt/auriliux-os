@@ -823,6 +823,7 @@ void JamesDienst::gehoert(QString text)
     text.remove(QRegularExpression(QStringLiteral("^\\s*((hey|hallo|okay|ok|hi)[\\s,]+)?(%1|james)\\b[\\s,.!?:;–-]*").arg(w),
                                    QRegularExpression::CaseInsensitiveOption));
     text = text.trimmed();
+    if (!text.isEmpty()) text[0] = text.at(0).toUpper();
     if (text.size() < 2) {
         ohrStarten(qMax(8.0, m_gespraechSekunden), false);
         blase(QStringLiteral("hoert"), QStringLiteral("Ja? Ich höre …"));

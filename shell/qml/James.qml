@@ -171,6 +171,7 @@ Window {
         KiStern { x: 26; anchors.verticalCenter: parent.verticalCenter; width: 30; height: 30; an: JamesDienst.an }
         Column {
             x: 68; anchors.verticalCenter: parent.verticalCenter
+            width: Math.max(120, kopfRechts.x - 68 - 20)
             spacing: 3
             Text { text: JamesDienst.name.toUpperCase(); color: Theme.goldHell; font.family: Theme.titelSchrift; font.pixelSize: 22
                    font.weight: Font.Bold; font.letterSpacing: 4 }
@@ -179,6 +180,7 @@ Window {
                 Rectangle { anchors.verticalCenter: parent.verticalCenter; width: 7; height: 7; radius: 4
                             color: !JamesDienst.eingerichtet ? Theme.leise : JamesDienst.verbunden ? Theme.gruen : Theme.rot }
                 Text {
+                    width: parent.parent.width - 14; elide: Text.ElideRight
                     color: Theme.leise; font.family: Theme.monoSchrift; font.pixelSize: 10; font.letterSpacing: 0.8
                     text: !JamesDienst.eingerichtet ? "NICHT EINGERICHTET"
                         : (JamesDienst.serverName + "  ·  " + (JamesDienst.verbunden ? "VERBUNDEN" : (JamesDienst.verbindungsFehler || "VERBINDE …").toUpperCase())
@@ -187,6 +189,7 @@ Window {
             }
         }
         Row {
+            id: kopfRechts
             anchors.right: parent.right; anchors.rightMargin: 24; anchors.verticalCenter: parent.verticalCenter
             spacing: 10
             Reiter { text: "Gespräch"; an: jw.seite === "gespraech"; onGeklickt: jw.seite = "gespraech" }
@@ -527,7 +530,7 @@ Window {
         Item {
             id: blase_
             x: na.ich ? liste_.width - width - 24 : 24
-            width: Math.max(140, Math.min(na.breite, inhaltText.implicitWidth + 36)); height: parent.height
+            width: Math.max(140, Math.min(na.breite, Math.max(inhaltText.implicitWidth, kopfZeile.implicitWidth) + 36)); height: parent.height
             Fase {
                 anchors.fill: parent; fase: na.ich ? 0 : 14
                 flaeche: na.ich ? Qt.rgba(230 / 255, 189 / 255, 87 / 255, 0.08) : Qt.rgba(22 / 255, 15 / 255, 6 / 255, 0.85)
@@ -538,6 +541,7 @@ Window {
                 id: blasenSpalte
                 x: 18; y: 13; width: parent.width - 36; spacing: 6
                 Row {
+                    id: kopfZeile
                     spacing: 8
                     Text { text: na.ich ? "DU" : JamesDienst.name.toUpperCase(); color: na.ich ? Theme.akzent : Theme.violett
                            font.family: Theme.monoSchrift; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 1.4 }
