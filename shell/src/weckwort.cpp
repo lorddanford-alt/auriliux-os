@@ -129,7 +129,7 @@ QByteArray Weckwort::wavLesen(const QString &pfad)
     }
     if (daten < 0 || bits != 16 || kanaele < 1 || rate < 4000) return {};
     const qsizetype rahmen = laenge / (2 * kanaele);
-    std::vector<float> mono(size_t(rahmen));
+    std::vector<float> mono(static_cast<size_t>(rahmen), 0.f);
     for (qsizetype i = 0; i < rahmen; ++i) {
         float s = 0;
         for (int k = 0; k < kanaele; ++k) s += qFromLittleEndian<qint16>(d.constData() + daten + 2 * (i * kanaele + k));
