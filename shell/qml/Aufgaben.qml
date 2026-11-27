@@ -249,11 +249,11 @@ Window {
     onGeraeteOffenChanged: bereicheSetzen()
     onHeightChanged: bereicheSetzen()
 
-    function escape() {
+    function abbrechen() {
         if (geraeteOffen) setGeraeteOffen(false)
         else if (offen && !bearbeiten && !umbenennenId) setOffen(false)
     }
-    Item { id: tasten; anchors.fill: parent; focus: true; Keys.onEscapePressed: af.escape() }
+    Item { id: tasten; anchors.fill: parent; focus: true; Keys.onEscapePressed: af.abbrechen() }
 
     // ════════ Bausteine ════════
     component HexTaste: Item {
