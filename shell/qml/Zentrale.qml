@@ -807,8 +807,11 @@ Window {
                     visible: !!zw.akku
                     Row {
                         spacing: 18
-                        AkkuSymbol { anchors.verticalCenter: parent.verticalCenter; scale: 1.8; prozent: zw.akku ? zw.akku.prozent : 0
-                                     laedt: !!zw.akku && zw.akku.status === "Charging"; netz: !!zw.akku && zw.akku.netz }
+                        Item {      // vergrößertes Akku-Symbol braucht auch den vergrößerten Platz
+                            width: akkuBild.implicitWidth * 1.8 + 6; height: 34; anchors.verticalCenter: parent.verticalCenter
+                            AkkuSymbol { id: akkuBild; anchors.centerIn: parent; scale: 1.8; prozent: zw.akku ? zw.akku.prozent : 0
+                                         laedt: !!zw.akku && zw.akku.status === "Charging"; netz: !!zw.akku && zw.akku.netz }
+                        }
                         Text { text: zw.akku ? Math.round(zw.akku.prozent) + " %" : ""; color: "#ffffff"; font.family: Theme.monoSchrift; font.pixelSize: 28; font.weight: Font.Bold }
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
