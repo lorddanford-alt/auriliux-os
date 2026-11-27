@@ -27,13 +27,16 @@ ESP=c12a7328-f81f-11d2-ba4b-00a0c93ec93b
 MINDEST_GB=${AURILIUX_MINDEST_GB:-30}
 melde() { echo "AURILIUX: $*"; for t in /dev/tty1 /dev/console; do echo "AURILIUX: $*" > "$t" 2>/dev/null && break; done; }
 abbruch() { melde "$*"; melde "Es wurde nichts verändert. Bitte die Anleitung (Schritt 3) ansehen."; sleep 20; exit 1; }
+# Partitionen einer Platte und ihr Typ (GUID) – über lsblk, sonst direkt aus der Partitionstabelle (blkid)
+teile() { lsblk -lnpo NAME,TYPE "$1" 2>/dev/null | awk '$2=="part" {print $1}'; }
+typ_von() { local t; t=$(lsblk -dno PARTTYPE "$1" 2>/dev/null | tr -d ' '); [ -n "$t" ] || t=$(blkid -p -o value -s PART_ENTRY_TYPE "$1" 2>/dev/null); echo "${t,,}"; }
 
 # 1. interne Platte: kein USB-Gerät und mit einer macOS-Partition (APFS)
 ziel=""
 typ=${AURILIUX_PLATTENTYP:-disk}          # (nur die Prüfung im Bau nutzt nachgebaute Platten vom Typ „loop“)
 for d in $(lsblk -dnpo NAME,TYPE | awk -v t="$typ" '$2==t {print $1}'); do
     [ "$(lsblk -dno TRAN "$d" 2>/dev/null | tr -d ' ')" = "usb" ] && continue
-    if lsblk -nro PARTTYPE "$d" 2>/dev/null | grep -qi "$APFS"; then ziel="$d"; break; fi
+    for p in $(teile "$d"); do [ "$(typ_von "$p")" = "$APFS" ] && { ziel="$d"; break 2; }; done
 done
 [ -n "$ziel" ] || abbruch "Keine interne Platte mit macOS gefunden."
 melde "Interne Platte: $ziel ($(lsblk -dno SIZE "$ziel" | tr -d ' '))"
@@ -47,7 +50,8 @@ melde "Freier Platz für Auriliux: ${frei_gb} GB"
 # 3. vorhandene EFI-Partition (OpenCore): Startdateien sichern und Prüfsummen merken
 mkdir -p /tmp/oc-esp /tmp/oc-sicherung
 : > /tmp/oc-pruefsummen
-for p in $(lsblk -nrpo NAME,PARTTYPE "$ziel" | awk -v e="$ESP" 'tolower($2)==e {print $1}'); do
+for p in $(teile "$ziel"); do
+    [ "$(typ_von "$p")" = "$ESP" ] || continue
     if mount -o ro "$p" /tmp/oc-esp 2>/dev/null; then
         if [ -d /tmp/oc-esp/EFI/BOOT ] || [ -d /tmp/oc-esp/EFI/OC ]; then
             ( cd /tmp/oc-esp && tar -cf "/tmp/oc-sicherung/$(basename "$p").tar" EFI )
