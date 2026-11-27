@@ -75,9 +75,17 @@ mv /aus/guardian-uebersicht.png /aus/11-guardian.png; mv /aus/guardian-schutz.pn
 mv /aus/guardian-ereignisse.png /aus/13-ereignisse.png; mv /aus/guardian-herzschlag.png /aus/14-herzschlag.png
 HOME=$H AURILIUX_VORSCHAU=karte auriliux-shell goldleiste > /aus/karte.log 2>&1 & P=$!
 sleep 7; grim /aus/15-karte.png
+kill $P; sleep 1
+# Goldener Login (ohne greetd: Vorschau-Modus), einmal ruhig und einmal mit falschem Passwort
+AURILIUX_VORSCHAU=anmeldung auriliux-shell anmeldung > /aus/anmeldung.log 2>&1 & P=$!
+sleep 6; grim /aus/16-anmeldung.png
+kill $P; sleep 1
+AURILIUX_VORSCHAU=anmeldung-fehler auriliux-shell anmeldung > /aus/anmeldung-fehler.log 2>&1 & P=$!
+sleep 3; grim /aus/17-anmeldung-fehler.png
 kill $P
+sh -n /usr/libexec/auriliux/anmeldung && sh -n /usr/libexec/auriliux/bildschirm-skalieren && echo "Skripte ok" >> /aus/anmeldung.log
 labwc --exit
 INNEN
 chmod +x /tmp/innen.sh
-timeout 260 labwc -C /tmp/leer -s /tmp/innen.sh > /aus/labwc.log 2>&1
+timeout 290 labwc -C /tmp/leer -s /tmp/innen.sh > /aus/labwc.log 2>&1
 ls -la /aus

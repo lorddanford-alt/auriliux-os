@@ -1,0 +1,12 @@
+#!/bin/sh
+# Startet den goldenen Anmeldebildschirm in einem kleinen labwc nur für die Anmeldung.
+# Kann er nicht starten oder stürzt er ab, kommt die Text-Anmeldung – man ist nie ausgesperrt.
+marke="${XDG_RUNTIME_DIR:-/tmp}/auriliux-anmeldung-fehler"
+rm -f "$marke"
+labwc -C /etc/auriliux/anmeldung \
+      -s "/usr/libexec/auriliux/bildschirm-skalieren; auriliux-shell anmeldung || touch '$marke'; labwc --exit"
+code=$?
+if [ $code -ne 0 ] || [ -e "$marke" ]; then
+    rm -f "$marke"
+    exec tuigreet --time --remember --asterisks --greeting 'Auriliux OS' --cmd labwc
+fi

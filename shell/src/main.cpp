@@ -1,5 +1,5 @@
 // Auriliux-Oberfläche – startet einen Teil der Oberfläche:
-//   auriliux-shell goldleiste | golddock | schreibtisch   (feste Bildschirm-Ebenen)
+//   auriliux-shell goldleiste | golddock | schreibtisch | anmeldung   (feste Bildschirm-Ebenen)
 //   auriliux-shell wabenfinder [ordner]       (normales Fenster)
 //   auriliux-shell guardian [abschnitt]       (Schutz-Zentrale: uebersicht, schutz, ereignisse, herzschlag …)
 #include <QGuiApplication>
@@ -18,6 +18,7 @@ int main(int argc, char *argv[])
         {QStringLiteral("goldleiste"), QStringLiteral("Goldleiste")},
         {QStringLiteral("golddock"), QStringLiteral("Golddock")},
         {QStringLiteral("schreibtisch"), QStringLiteral("Schreibtisch")},   // + Aufgaben-Leiste links
+        {QStringLiteral("anmeldung"), QStringLiteral("Anmeldebildschirm")},  // goldener Login (von greetd gestartet)
     };
     const QHash<QString, QString> fenster{
         {QStringLiteral("wabenfinder"), QStringLiteral("Wabenfinder")},
@@ -25,7 +26,7 @@ int main(int argc, char *argv[])
     };
     const QString teil = argc > 1 ? QString::fromLocal8Bit(argv[1]).toLower() : QStringLiteral("goldleiste");
     if (!ebenen.contains(teil) && !fenster.contains(teil)) {
-        fprintf(stderr, "Unbekannter Teil: %s (bekannt: goldleiste, golddock, schreibtisch, wabenfinder, guardian)\n", qPrintable(teil));
+        fprintf(stderr, "Unbekannter Teil: %s (bekannt: goldleiste, golddock, schreibtisch, anmeldung, wabenfinder, guardian)\n", qPrintable(teil));
         return 2;
     }
 

@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<!-- labwc nur für den Anmeldebildschirm. Eine eigene (wirkungslose) Taste ersetzt alle Standard-Tastenkürzel –
+     so lässt sich vor der Anmeldung kein Terminal oder Programm öffnen. -->
+<labwc_config>
+  <theme><name>Auriliux</name></theme>
+  <keyboard>
+    <keybind key="W-F24"><action name="None" /></keybind>
+  </keyboard>
+</labwc_config>

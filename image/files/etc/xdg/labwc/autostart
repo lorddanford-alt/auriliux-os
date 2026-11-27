@@ -1,4 +1,6 @@
 # Auriliux-Schreibtisch
+# Retina-Bildschirm auf doppelte Größe
+/usr/libexec/auriliux/bildschirm-skalieren
 # deutsche Standardordner (Dokumente, Bilder, Musik …) anlegen bzw. finden
 xdg-user-dirs-update >/dev/null 2>&1
 swaybg -c '#000000' >/dev/null 2>&1 &

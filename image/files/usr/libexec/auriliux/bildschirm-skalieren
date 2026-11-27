@@ -1,0 +1,10 @@
+#!/bin/sh
+# Retina-Bildschirm des MacBooks (eingebaut, mindestens 2400 Pixel breit) → alles doppelt so groß,
+# sonst wäre die Oberfläche winzig. Externe Bildschirme bleiben, wie sie sind.
+wlr-randr 2>/dev/null | awk '/^[^ ]/ { name = $1 } /current/ { print name, $1 }' | while read -r name modus; do
+    breite=${modus%%x*}
+    case "$name" in
+        eDP*|LVDS*) [ "${breite:-0}" -ge 2400 ] 2>/dev/null && wlr-randr --output "$name" --scale 2 ;;
+    esac
+done
+exit 0

@@ -1,7 +1,7 @@
-# Vorläufige Anmeldung (Text). Wird durch den goldenen Auriliux-Anmeldebildschirm ersetzt.
+# Goldener Auriliux-Anmeldebildschirm (Rückfall auf die Text-Anmeldung, falls er nicht starten kann)
 [terminal]
 vt = 1
 
 [default_session]
-command = "tuigreet --time --remember --asterisks --greeting 'Auriliux OS' --cmd labwc"
+command = "/usr/libexec/auriliux/anmeldung"
 user = "greeter"
