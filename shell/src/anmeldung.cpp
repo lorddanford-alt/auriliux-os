@@ -167,9 +167,8 @@ void Anmeldung::energie(const QString &was)
     QProcess::startDetached(QStringLiteral("systemctl"), {befehl});
 }
 
-bool Anmeldung::grossschreibung() const
+bool feststelltasteAn()
 {
-    // Feststelltaste: LED-Zustand der Tastaturen
     const QDir d(QStringLiteral("/sys/class/leds"));
     for (const QString &n : d.entryList(QDir::Dirs | QDir::NoDotAndDotDot)) {
         if (!n.endsWith(QLatin1String("capslock"))) continue;
@@ -178,3 +177,5 @@ bool Anmeldung::grossschreibung() const
     }
     return false;
 }
+
+bool Anmeldung::grossschreibung() const { return feststelltasteAn(); }

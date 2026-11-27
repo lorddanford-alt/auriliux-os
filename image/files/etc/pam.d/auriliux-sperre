@@ -1,0 +1,3 @@
+#%PAM-1.0
+# Bildschirmsperre von Auriliux: nur das Passwort prüfen (wie bei der Anmeldung, inkl. Wartezeit nach Fehlversuch)
+auth       include      system-auth

@@ -6,6 +6,9 @@
 #include <QVariantList>
 #include <QtQml/qqmlregistration.h>
 
+/// ist die Feststelltaste an? (LED-Zustand der Tastaturen)
+bool feststelltasteAn();
+
 class Anmeldung : public QObject
 {
     Q_OBJECT

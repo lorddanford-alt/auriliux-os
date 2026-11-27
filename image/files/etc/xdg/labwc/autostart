@@ -7,3 +7,5 @@ swaybg -c '#000000' >/dev/null 2>&1 &
 auriliux-shell schreibtisch >/dev/null 2>&1 &
 auriliux-shell goldleiste >/dev/null 2>&1 &
 auriliux-shell golddock >/dev/null 2>&1 &
+# Sperrwache: sperrt nach 5 Minuten ohne Eingabe, vor dem Ruhezustand (Deckel zu) und bei „loginctl lock-session“
+( for i in 1 2 3 4 5; do auriliux-shell sperrwache && break; sleep 3; done ) >/dev/null 2>&1 &

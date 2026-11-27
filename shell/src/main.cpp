@@ -2,6 +2,8 @@
 //   auriliux-shell goldleiste | golddock | schreibtisch | anmeldung   (feste Bildschirm-Ebenen)
 //   auriliux-shell wabenfinder [ordner]       (normales Fenster)
 //   auriliux-shell guardian [abschnitt]       (Schutz-Zentrale: uebersicht, schutz, ereignisse, herzschlag …)
+//   auriliux-shell sperre                     (Bildschirmsperre – besser über /usr/libexec/auriliux/sperren)
+//   auriliux-shell sperrwache                 (unsichtbar: sperrt bei Leerlauf, vor dem Ruhezustand, auf Befehl)
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QHash>
@@ -11,6 +13,9 @@
 #include <cstdio>
 #include "programme.h"
 #include "dateien.h"
+#include "sperrwache.h"
+#include <QScreen>
+#include <QPointer>
 
 int main(int argc, char *argv[])
 {
@@ -25,8 +30,9 @@ int main(int argc, char *argv[])
         {QStringLiteral("guardian"), QStringLiteral("Guardian")},
     };
     const QString teil = argc > 1 ? QString::fromLocal8Bit(argv[1]).toLower() : QStringLiteral("goldleiste");
-    if (!ebenen.contains(teil) && !fenster.contains(teil)) {
-        fprintf(stderr, "Unbekannter Teil: %s (bekannt: goldleiste, golddock, schreibtisch, anmeldung, wabenfinder, guardian)\n", qPrintable(teil));
+    const bool sperre = teil == QLatin1String("sperre"), wache = teil == QLatin1String("sperrwache");
+    if (!ebenen.contains(teil) && !fenster.contains(teil) && !sperre && !wache) {
+        fprintf(stderr, "Unbekannter Teil: %s (bekannt: goldleiste, golddock, schreibtisch, anmeldung, wabenfinder, guardian, sperre, sperrwache)\n", qPrintable(teil));
         return 2;
     }
 
@@ -50,6 +56,11 @@ int main(int argc, char *argv[])
     if (QIcon::themeName().isEmpty()) QIcon::setThemeName(QStringLiteral("hicolor"));
     QIcon::setFallbackThemeName(QStringLiteral("Adwaita"));
 
+    if (wache) {
+        Sperrwache w;
+        return app.exec();
+    }
+
     QQmlApplicationEngine engine;
     engine.addImageProvider(QStringLiteral("symbol"), new SymbolBild);
     engine.addImageProvider(QStringLiteral("vorschau"), new VorschauBild);
@@ -57,6 +68,24 @@ int main(int argc, char *argv[])
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed, &app,
                      [] { QCoreApplication::exit(1); }, Qt::QueuedConnection);
 
+    if (sperre) {
+        // je Bildschirm eine Sperrfläche; nie von selbst beenden – nur Entsperren beendet das Programm
+        app.setQuitOnLastWindowClosed(false);
+        auto *flaechen = new QHash<QString, QPointer<QObject>>;
+        const QString haupt = QGuiApplication::primaryScreen() ? QGuiApplication::primaryScreen()->name() : QString();
+        auto laden = [&engine, flaechen, haupt](QScreen *s) {
+            if (!s || flaechen->value(s->name())) return;
+            engine.setInitialProperties({{QStringLiteral("bildschirm"), s->name()}, {QStringLiteral("haupt"), s->name() == haupt}});
+            engine.loadFromModule(QStringLiteral("Auriliux"), QStringLiteral("Sperrbildschirm"));
+            if (!engine.rootObjects().isEmpty()) flaechen->insert(s->name(), engine.rootObjects().last());
+        };
+        for (QScreen *s : QGuiApplication::screens()) laden(s);
+        QObject::connect(&app, &QGuiApplication::screenAdded, &app, laden);
+        QObject::connect(&app, &QGuiApplication::screenRemoved, &app, [flaechen](QScreen *s) {
+            if (QObject *f = flaechen->take(s->name())) f->deleteLater();
+        });
+        return app.exec();
+    }
     if (teil == QLatin1String("wabenfinder")) {
         QString start = argc > 2 ? QString::fromLocal8Bit(argv[2]) : QDir::homePath();
         if (start == QLatin1String("papierkorb")) start = Dateien().papierkorbOrdner();

@@ -83,9 +83,23 @@ kill $P; sleep 1
 AURILIUX_VORSCHAU=anmeldung-fehler auriliux-shell anmeldung > /aus/anmeldung-fehler.log 2>&1 & P=$!
 sleep 3; grim /aus/17-anmeldung-fehler.png
 kill $P
-sh -n /usr/libexec/auriliux/anmeldung && sh -n /usr/libexec/auriliux/bildschirm-skalieren && echo "Skripte ok" >> /aus/anmeldung.log
+sh -n /usr/libexec/auriliux/anmeldung && sh -n /usr/libexec/auriliux/bildschirm-skalieren && sh -n /usr/libexec/auriliux/sperren && echo "Skripte ok" >> /aus/anmeldung.log
+# Sperrwache kurz laufen lassen (ohne logind im Bau-Behälter: darf nur melden, nicht abstürzen)
+auriliux-shell sperrwache > /aus/sperrwache.log 2>&1 & P=$!
+sleep 3; kill -0 $P 2>/dev/null && echo "sperrwache läuft" >> /aus/sperrwache.log || echo "sperrwache beendet" >> /aus/sperrwache.log
+kill $P 2>/dev/null; sleep 1
+# Echte Bildschirmsperre: Wegwerf-Passwort nur in diesem Bau-Behälter; die Sperre tippt erst ein falsches,
+# dann dieses Passwort ein (geprüft über PAM) und muss sich danach selbst entsperren und beenden
+echo 'root:probe-7Gq2x' | chpasswd >> /aus/sperre.log 2>&1
+AURILIUX_VORSCHAU=sperre-probe AURILIUX_PROBE_PASSWORT='probe-7Gq2x' auriliux-shell sperre >> /aus/sperre.log 2>&1 & P=$!
+sleep 2.5; grim /aus/18-sperre.png 2>> /aus/sperre.log
+sleep 3.2; grim /aus/19-sperre-fehler.png 2>> /aus/sperre.log
+for i in $(seq 1 16); do kill -0 $P 2>/dev/null || break; sleep 0.5; done
+if kill -0 $P 2>/dev/null; then echo "FEHLER: Sperre läuft noch (nicht entsperrt)" >> /aus/sperre.log; kill $P
+else wait $P; echo "Sperre beendet mit Code $?" >> /aus/sperre.log; fi
+sleep 1; grim /aus/20-entsperrt.png 2>> /aus/sperre.log
 labwc --exit
 INNEN
 chmod +x /tmp/innen.sh
-timeout 290 labwc -C /tmp/leer -s /tmp/innen.sh > /aus/labwc.log 2>&1
+timeout 320 labwc -C /tmp/leer -s /tmp/innen.sh > /aus/labwc.log 2>&1
 ls -la /aus

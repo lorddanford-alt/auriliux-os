@@ -52,7 +52,7 @@ Window {
             Menuepunkt { titel: "Neustart …"; nachfrage: "Wirklich neu starten? Nochmal"; onAusgeloest: System.starte("systemctl", ["reboot"]) }
             Menuepunkt { titel: "Ausschalten …"; nachfrage: "Wirklich ausschalten? Nochmal"; onAusgeloest: System.starte("systemctl", ["poweroff"]) }
             Linie {}
-            Menuepunkt { titel: "Bildschirm sperren"; onAusgeloest: { menue.schliessen(); System.starte("loginctl", ["lock-session"]) } }
+            Menuepunkt { titel: "Bildschirm sperren"; onAusgeloest: { menue.schliessen(); System.starte("/usr/libexec/auriliux/sperren", []) } }
             Menuepunkt { titel: "Abmelden …"; nachfrage: "Wirklich abmelden? Nochmal"; onAusgeloest: System.starte("labwc", ["--exit"]) }
         }
     }
