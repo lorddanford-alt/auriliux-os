@@ -98,9 +98,21 @@ jobs:
           sudo podman push "$IMAGE:latest"
           sudo podman push "$IMAGE:$TAG"
 
+  installer-pruefen:
+    name: Installer-Anweisungen prüfen
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: An einer nachgebauten Mac-Platte prüfen (nichts Echtes wird angefasst)
+        run: |
+          python3 werkzeuge/installer-config.py > /tmp/config.toml
+          python3 -c "import tomllib; d=tomllib.load(open('/tmp/config.toml','rb')); print('config.toml ok:', len(d['customizations']['installer']['kickstart']['contents']), 'Zeichen')"
+          sudo podman run --rm --privileged -v /dev:/dev -v "$PWD:/q:ro" quay.io/fedora/fedora:45 bash /q/werkzeuge/installer-test.sh /q/image/installer/auriliux.ks
+
   installer:
     name: Installer (ISO)
-    needs: abbild
+    needs: [abbild, installer-pruefen]
     if: github.event_name == 'workflow_dispatch' && inputs.installer
     runs-on: ubuntu-24.04
     timeout-minutes: 120
@@ -115,7 +127,10 @@ jobs:
           echo "${{ secrets.GITHUB_TOKEN }}" | sudo podman login ghcr.io -u "${{ github.actor }}" --password-stdin
           sudo podman pull "$IMAGE:latest"
           mkdir -p output
+          # eigene Installer-Anweisungen: nur freier Platz, OpenCore bleibt (ohne sie würde die ganze Platte gelöscht!)
+          python3 werkzeuge/installer-config.py > config.toml
           sudo podman run --rm --privileged --pull=newer \
+            -v ./config.toml:/config.toml:ro \
             --security-opt label=type:unconfined_t \
             -v ./output:/output \
             -v /var/lib/containers/storage:/var/lib/containers/storage \

@@ -1,0 +1,16 @@
+# Aktualisiert die Startdateien (shim/GRUB) – aber NUR, wenn Auriliux' eigene EFI-Partition eingehängt ist.
+# Fedoras eigener Dienst (bootloader-update.service) ist abgeschaltet: der würde im Zweifel die erste
+# EFI-Partition der Platte nehmen – und das ist die mit OpenCore.
+[Unit]
+Description=Auriliux: Startdateien aktualisieren (nur eigene EFI-Partition)
+ConditionPathExists=/usr/bin/bootupctl
+After=local-fs.target
+RequiresMountsFor=/boot/efi
+
+[Service]
+Type=oneshot
+ExecCondition=/bin/sh -c 'findmnt -no LABEL /boot/efi | grep -qx AURILIUXEFI'
+ExecStart=/usr/bin/bootupctl update
+
+[Install]
+WantedBy=multi-user.target

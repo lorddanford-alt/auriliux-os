@@ -57,6 +57,9 @@ COPY werkzeuge/intro-thema.py /intro/intro-thema.py
 COPY image/intro-roh /intro/roh
 COPY image/files/usr/share/auriliux/logo.png /intro/logo.png
 RUN python3 /intro/intro-thema.py /intro/roh /intro/logo.png /ausgabe/usr/share/plymouth/themes/auriliux
+# Gold-Logo als Symbol für die OpenCore-Startauswahl (.VolumeIcon.icns auf Auriliux' EFI-Partition)
+RUN mkdir -p /ausgabe/usr/share/auriliux && python3 -c "from PIL import Image; l=Image.open('/intro/logo.png').convert('RGBA'); s=max(l.size); q=Image.new('RGBA',(s,s),(0,0,0,0)); q.paste(l,((s-l.width)//2,(s-l.height)//2)); q.resize((512,512),Image.LANCZOS).save('/ausgabe/usr/share/auriliux/auriliux.icns', sizes=[(16,16),(32,32),(128,128),(256,256),(512,512)])" \
+    && ls -la /ausgabe/usr/share/auriliux/auriliux.icns
 
 # ── Stufe 2: das eigentliche System ───────────────────────────────────────────
 # Basis: Fedora 45 bootc (unveränderliches System, Updates als ganzes Abbild, Rückweg zum vorherigen Stand)
@@ -150,6 +153,7 @@ RUN sed -i 's/^PRETTY_NAME=.*/PRETTY_NAME="Auriliux OS (Fedora 45)"/' /usr/lib/o
        auriliux-guardian.service auriliux-herzschlag.service auriliux-update.timer \
        auriliux-update-stand.service bluetooth.service auriliux-tresor.service auriliux-tresor-vorbereiten.service \
     && { systemctl mask bootc-fetch-apply-updates.timer 2>/dev/null || true; } \
+    && { systemctl mask bootloader-update.service 2>/dev/null || true; } && systemctl enable auriliux-efi-update.service \
     && firewall-offline-cmd --set-default-zone=drop \
     && systemctl set-default graphical.target
 
