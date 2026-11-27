@@ -57,3 +57,11 @@ public:
     VorschauBild() : QQuickImageProvider(QQuickImageProvider::Image, QQmlImageProviderBase::ForceAsynchronousImageLoading) {}
     QImage requestImage(const QString &id, QSize *size, const QSize &requestedSize) override;
 };
+
+/// Fotos als fertige Wabe: image://wabe/<pfad> – ausgefüllt (ohne Verzerren) und sechseckig ausgeschnitten
+class WabenBild : public QQuickImageProvider
+{
+public:
+    WabenBild() : QQuickImageProvider(QQuickImageProvider::Image, QQmlImageProviderBase::ForceAsynchronousImageLoading) {}
+    QImage requestImage(const QString &id, QSize *size, const QSize &requestedSize) override;
+};

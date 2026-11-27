@@ -11,6 +11,8 @@
 #include <QIcon>
 #include <QGuiApplication>
 #include <QImageReader>
+#include <QPainter>
+#include <QPainterPath>
 #include <QMimeDatabase>
 #include <QStandardPaths>
 #include <QThread>
@@ -253,4 +255,33 @@ QImage VorschauBild::requestImage(const QString &id, QSize *size, const QSize &r
     QImage img = r.read();
     if (size) *size = img.size();
     return img;
+}
+
+QImage WabenBild::requestImage(const QString &id, QSize *size, const QSize &requestedSize)
+{
+    const QString pfad = QUrl::fromPercentEncoding(id.toUtf8());
+    const int b = requestedSize.width() > 0 ? requestedSize.width() : 124;
+    const int h = requestedSize.height() > 0 ? requestedSize.height() : qRound(b * 1.16);
+    QImageReader r(pfad);
+    r.setAutoTransform(true);
+    const QSize s = r.size();
+    if (s.isValid()) {
+        const qreal f = qMax(qreal(b) / s.width(), qreal(h) / s.height());
+        r.setScaledSize(QSize(qMax(1, qRound(s.width() * f)), qMax(1, qRound(s.height() * f))));
+    }
+    const QImage quelle = r.read();
+    QImage aus(b, h, QImage::Format_ARGB32_Premultiplied);
+    aus.fill(Qt::transparent);
+    if (!quelle.isNull()) {
+        QPainter p(&aus);
+        p.setRenderHint(QPainter::Antialiasing);
+        p.setRenderHint(QPainter::SmoothPixmapTransform);
+        QPainterPath sechs;
+        sechs.moveTo(b / 2.0, 0); sechs.lineTo(b, h * 0.25); sechs.lineTo(b, h * 0.75);
+        sechs.lineTo(b / 2.0, h); sechs.lineTo(0, h * 0.75); sechs.lineTo(0, h * 0.25); sechs.closeSubpath();
+        p.setClipPath(sechs);
+        p.drawImage(QPointF((b - quelle.width()) / 2.0, (h - quelle.height()) / 2.0), quelle);
+    }
+    if (size) *size = aus.size();
+    return aus;
 }

@@ -49,7 +49,7 @@ kill $P; sleep 1
 mkdir -p "$H/.config" "$H/Schreibtisch/Projekte" "$H/Schreibtisch/Ideen"
 printf 'XDG_DESKTOP_DIR="$HOME/Schreibtisch"\nXDG_DOCUMENTS_DIR="$HOME/Dokumente"\nXDG_DOWNLOAD_DIR="$HOME/Downloads"\nXDG_PICTURES_DIR="$HOME/Bilder"\nXDG_MUSIC_DIR="$HOME/Musik"\n' > "$H/.config/user-dirs.dirs"
 echo "Milch, Brot" > "$H/Schreibtisch/Einkaufsliste.txt"; echo x > "$H/Schreibtisch/Rechnung 2026-11.pdf"
-cp /aus/1-goldleiste.png "$H/Schreibtisch/Bildschirmfoto.png"
+cp /usr/share/icons/hicolor/256x256/apps/google-chrome.png "$H/Schreibtisch/Urlaub.png" 2>/dev/null || cp /aus/2-menue.png "$H/Schreibtisch/Urlaub.png"
 cp /usr/share/applications/google-chrome.desktop "$H/Schreibtisch/Chrome.desktop" 2>/dev/null && chmod +x "$H/Schreibtisch/Chrome.desktop"
 HOME=$H auriliux-shell goldleiste > /dev/null 2>&1 & L=$!
 HOME=$H auriliux-shell schreibtisch > /aus/schreibtisch.log 2>&1 & P=$!

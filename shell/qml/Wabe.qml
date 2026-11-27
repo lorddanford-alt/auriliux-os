@@ -37,14 +37,15 @@ Canvas {
     onWidthChanged: requestPaint()
     onHeightChanged: requestPaint()
     onBildChanged: requestPaint()
-    // Foto über ein echtes Bild-Element laden (Canvas.loadImage kann keine Hintergrund-Bildquellen)
+    // Foto: fertig sechseckig zugeschnitten vom System (image://wabe/…), liegt über dem Inneren
     Image {
-        id: foto
-        visible: false
-        source: w.bild
+        x: w.rand; y: w.rand
+        width: w.width - 2 * w.rand; height: w.height - 2 * w.rand
+        visible: w.bild !== ""
+        source: w.bild !== "" ? w.bild.replace("image://vorschau/", "image://wabe/") : ""
+        sourceSize: Qt.size(Math.max(1, Math.round(width * 2)), Math.max(1, Math.round(height * 2)))
         asynchronous: true
-        sourceSize: Qt.size(160, 160)
-        onStatusChanged: if (status === Image.Ready) w.requestPaint()
+        smooth: true
     }
 
     function sechseck(g, x, y, b, h) {
@@ -68,14 +69,8 @@ Canvas {
         // Inneres
         const r = rand
         sechseck(g, r, r, b - 2 * r, h - 2 * r)
-        if (bild !== "" && foto.status === Image.Ready && foto.implicitWidth > 0) {
-            g.save(); g.clip()
-            g.fillStyle = "#0d0a04"; g.fillRect(0, 0, b, h)
-            // ausfüllen ohne Verzerren (wie object-fit: cover)
-            const zb = b - 2 * r, zh = h - 2 * r, qb = foto.implicitWidth, qh = foto.implicitHeight
-            const f = Math.max(zb / qb, zh / qh), sb = zb / f, sh = zh / f
-            g.drawImage(foto, (qb - sb) / 2, (qh - sh) / 2, sb, sh, r, r, zb, zh)
-            g.restore()
+        if (bild !== "") {
+            g.fillStyle = "#0d0a04"; g.fill()
         } else {
             const k = g.createRadialGradient(b / 2, h * f.m, 0, b / 2, h * f.m, Math.max(b, h) * 0.72)
             k.addColorStop(0, f.i[0]); k.addColorStop(1, f.i[1])
