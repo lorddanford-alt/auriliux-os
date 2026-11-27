@@ -37,7 +37,7 @@ qt_add_qml_module(auriliux-shell
     URI Auriliux
     VERSION 1.0
     SOURCES src/system.h src/system.cpp src/ebene.h src/ebene.cpp src/fenster.h src/fenster.cpp src/programme.h src/programme.cpp src/dateien.h src/dateien.cpp src/geraete.h src/geraete.cpp src/waechter.h src/waechter.cpp src/anmeldung.h src/anmeldung.cpp
-            src/sperre.h src/sperre.cpp src/sperrwache.h src/sperrwache.cpp src/steuerung.h src/steuerung.cpp src/charakterspeicher.h src/charakterspeicher.cpp src/tresordienst.h src/tresordienst.cpp
+            src/sperre.h src/sperre.cpp src/sperrwache.h src/sperrwache.cpp src/steuerung.h src/steuerung.cpp src/charakterspeicher.h src/charakterspeicher.cpp src/tresordienst.h src/tresordienst.cpp src/klang.h src/klang.cpp
     QML_FILES ${AURILIUX_QML}
 )
 

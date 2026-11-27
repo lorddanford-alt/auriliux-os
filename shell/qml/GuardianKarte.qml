@@ -110,7 +110,12 @@ Window {
                         gefuellt: index === 0
                         art: index === 0 ? (modelData.aktion === "beenden" ? "rot" : "gold") : "leise"
                         nachfrage: modelData.aktion === "zulassen" || modelData.aktion === "freigeben" || modelData.aktion === "fortsetzen" ? "Sicher? Nochmal" : ""
-                        onGeklickt: { ausblenden.stop(); Waechter.befehl("karte", ["aktion", karte.aktuell.id, modelData.aktion]) }
+                        onGeklickt: {
+                            ausblenden.stop()
+                            // „Im Tresor retten“ öffnet den Tresor (Code nötig) – kein Befehl an Guardian
+                            if (modelData.aktion === "tresor") System.starte("auriliux-shell", ["tresor", "rettung", String(karte.aktuell.zeit)])
+                            else Waechter.befehl("karte", ["aktion", karte.aktuell.id, modelData.aktion])
+                        }
                     }
                 }
             }

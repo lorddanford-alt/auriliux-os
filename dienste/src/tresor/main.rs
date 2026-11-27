@@ -59,6 +59,11 @@ fn sauber(p: &str) -> Option<String> {
     Some(teile.join("/"))
 }
 
+/// Name eines neuen Ordners im Benutzerordner (z. B. „Gerettet 27.11.2026 14-00“)
+fn ordnername_ok(n: &str) -> bool {
+    !n.is_empty() && n.chars().count() <= 120 && !n.contains('/') && !n.contains('\0') && !n.starts_with('.')
+}
+
 fn ist_id(t: &str) -> bool {
     !t.is_empty() && t.len() <= 64 && t.chars().all(|c| c.is_ascii_hexdigit())
 }
@@ -174,93 +179,280 @@ impl Dienst {
         ok(vec![("eintraege", J::L(l))])
     }
 
-    /// Datei/Ordner zurückholen: root kopiert aus dem Stand in eine private Ablage und übergibt sie dem Benutzer;
-    /// das Einsortieren in den Benutzerordner macht dann ein Prozess MIT DEN RECHTEN DES BENUTZERS
-    /// (so kann eine Verknüpfung im Benutzerordner nie dazu führen, dass root woanders hinschreibt).
-    /// Vorhandenes wird nie überschrieben – das Zurückgeholte bekommt den Zusatz „(zurückgeholt)“.
-    fn zurueckholen(&self, uid: u32, quelle: &str, id: &str, pfad: &str) -> String {
-        let (Some((name, gid)), Some(rel)) = (self.heim_name(uid), sauber(pfad)) else { return fehler("Ungültiger Pfad") };
-        if rel.is_empty() || !ist_id(id) {
-            return fehler("Ungültige Auswahl");
-        }
-        let (lager, heim, daten, ablage) = {
-            let g = self.g.lock().unwrap();
-            (g.orte.lager.clone(), g.orte.heim.clone(), g.daten.clone(), g.ablage.clone())
-        };
+    /// privates Fach in der Ablage (nur root, bis es dem Benutzer übergeben wird)
+    fn fach_neu(&self) -> Result<String, String> {
+        let ablage = self.g.lock().unwrap().ablage.clone();
         let _ = fs::create_dir_all(&ablage);
         let _ = fs::set_permissions(&ablage, fs::Permissions::from_mode(0o711));
         let fach = format!("{}/{}", ablage, schloss::hex(&schloss::zufall(12)));
-        if fs::create_dir(&fach).is_err() {
-            return fehler("Ablage ließ sich nicht anlegen");
-        }
+        fs::create_dir(&fach).map_err(|_| "Ablage ließ sich nicht anlegen".to_string())?;
         let _ = fs::set_permissions(&fach, fs::Permissions::from_mode(0o700));
-        let aufraeumen = || {
-            let _ = datei::befehl("rm", &["-rf", "--one-file-system", &fach], 600);
+        Ok(fach)
+    }
+
+    /// Inhalt des Fachs dem Benutzer übergeben und MIT DEN RECHTEN DES BENUTZERS nach `ziel` kopieren
+    /// (so kann eine Verknüpfung im Benutzerordner nie dazu führen, dass root woanders hinschreibt).
+    /// Das Fach wird danach immer entfernt.
+    fn einsortieren(uid: u32, gid: u32, fach: &str, oberstes: &str, inhalt: &str, ziel: &str) -> Result<(), String> {
+        let besitzer = format!("{}:{}", uid, gid);
+        let _ = datei::befehl("chown", &["-R", "-h", &besitzer, oberstes], 3600);
+        let _ = datei::befehl("chown", &[&besitzer, fach], 10);
+        let als = |args: &[&str]| -> bool {
+            let mut a = vec![format!("--reuid={}", uid), format!("--regid={}", gid), "--clear-groups".to_string(), "--".to_string()];
+            a.extend(args.iter().map(|s| s.to_string()));
+            let r: Vec<&str> = a.iter().map(|s| s.as_str()).collect();
+            matches!(datei::befehl("setpriv", &r, 7200), Some((0, _)))
         };
-        let basisname = rel.rsplit('/').next().unwrap_or(&rel).to_string();
+        let eltern = Path::new(ziel).parent().map(|p| p.to_string_lossy().into_owned()).unwrap_or_default();
+        let gut = als(&["mkdir", "-p", &eltern]) && als(&["cp", "-a", "--reflink=auto", "--no-target-directory", inhalt, ziel]);
+        let _ = datei::befehl("rm", &["-rf", "--one-file-system", fach], 3600);
+        if gut { Ok(()) } else { Err("Einsortieren in deinen Ordner fehlgeschlagen".into()) }
+    }
+
+    /// freier Name: „Brief.txt“ → „Brief (zurückgeholt).txt“ → „Brief (zurückgeholt 2).txt“ …
+    fn freier_name(ziel: &str, zusatz: &str, endung_trennen: bool) -> String {
+        if Path::new(ziel).symlink_metadata().is_err() {
+            return ziel.to_string();
+        }
+        let (eltern, name) = ziel.rsplit_once('/').unwrap_or(("", ziel));
+        let (stamm, endung) = match name.rsplit_once('.') {
+            Some((s, e)) if endung_trennen && !s.is_empty() && e.len() <= 8 => (s.to_string(), format!(".{}", e)),
+            _ => (name.to_string(), String::new()),
+        };
+        for n in 1..1000 {
+            let z = if zusatz.is_empty() {
+                format!("{}/{} {}{}", eltern, stamm, n + 1, endung)
+            } else {
+                format!("{}/{} ({}{}){}", eltern, stamm, zusatz, if n == 1 { String::new() } else { format!(" {}", n) }, endung)
+            };
+            if Path::new(&z).symlink_metadata().is_err() {
+                return z;
+            }
+        }
+        format!("{}/{} ({})", eltern, stamm, schloss::hex(&schloss::zufall(3)))
+    }
+
+    /// Datei/Ordner zurückholen – Vorhandenes wird nie überschrieben („… (zurückgeholt)“).
+    /// Leerer Pfad + Ordnername = den ganzen Stand in einen eigenen Ordner zurückholen.
+    fn zurueckholen(&self, uid: u32, quelle: &str, id: &str, pfad: &str, ordnername: &str) -> String {
+        let (Some((name, gid)), Some(rel)) = (self.heim_name(uid), sauber(pfad)) else { return fehler("Ungültiger Pfad") };
+        let ganz = rel.is_empty();
+        if !ist_id(id) || (ganz && !ordnername_ok(ordnername)) {
+            return fehler("Ungültige Auswahl");
+        }
+        let (lager, heim, daten) = {
+            let g = self.g.lock().unwrap();
+            (g.orte.lager.clone(), g.orte.heim.clone(), g.daten.clone())
+        };
+        let fach = match self.fach_neu() {
+            Ok(f) => f,
+            Err(e) => return fehler(&e),
+        };
+        let weg = || {
+            let _ = datei::befehl("rm", &["-rf", "--one-file-system", &fach], 3600);
+        };
+        let basisname = if ganz { name.clone() } else { rel.rsplit('/').next().unwrap_or(&rel).to_string() };
         // 1) als root aus dem Stand in die Ablage
         let (inhalt, oberstes) = if quelle == "s" {
             let basis = format!("{}/{}/{}", lager, id, name);
-            let q = format!("{}/{}", basis, rel);
+            let q = if ganz { basis.clone() } else { format!("{}/{}", basis, rel) };
             match fs::canonicalize(Path::new(&q).parent().unwrap_or(Path::new("/"))) {
-                Ok(p) if p.starts_with(&basis) && Path::new(&q).symlink_metadata().is_ok() => {}
+                Ok(p) if (ganz || p.starts_with(&basis)) && Path::new(&q).symlink_metadata().is_ok() => {}
                 _ => {
-                    aufraeumen();
+                    weg();
                     return fehler("Das gibt es in diesem Stand nicht");
                 }
             }
-            if !matches!(datei::befehl("cp", &["-a", "--reflink=auto", &q, &format!("{}/", fach)], 3600), Some((0, _))) {
-                aufraeumen();
+            if !matches!(datei::befehl("cp", &["-a", "--reflink=auto", &q, &format!("{}/", fach)], 7200), Some((0, _))) {
+                weg();
                 return fehler("Kopieren aus dem Schnappschuss fehlgeschlagen");
             }
             (format!("{}/{}", fach, basisname), format!("{}/{}", fach, basisname))
         } else {
             let Ok(_f) = self.frei.try_lock() else {
-                aufraeumen();
+                weg();
                 return fehler("Die Sicherung läuft gerade – bitte kurz warten.");
             };
-            let abs = format!("{}/{}/{}", heim, name, rel);
+            let abs = if ganz { format!("{}/{}", heim, name) } else { format!("{}/{}/{}", heim, name, rel) };
             if let Err(e) = sicherung::auspacken(&daten, id, &abs, &fach) {
-                aufraeumen();
+                weg();
                 return fehler(&e);
             }
             let erstes = abs.trim_start_matches('/').split('/').next().unwrap_or("").to_string();
             (format!("{}{}", fach, abs), format!("{}/{}", fach, erstes))
         };
         if Path::new(&inhalt).symlink_metadata().is_err() {
-            aufraeumen();
+            weg();
             return fehler("Nichts zum Zurückholen gefunden");
         }
-        // 2) dem Benutzer übergeben – erst der Inhalt, zuletzt das Fach selbst
-        let besitzer = format!("{}:{}", uid, gid);
-        let _ = datei::befehl("chown", &["-R", "-h", &besitzer, &oberstes], 600);
-        let _ = datei::befehl("chown", &[&besitzer, &fach], 10);
-        // 3) freien Namen suchen und als Benutzer einsortieren
-        let ziel_basis = format!("{}/{}/{}", heim, name, rel);
-        let (stamm, endung) = match basisname.rsplit_once('.') {
-            Some((s, e)) if !s.is_empty() && e.len() <= 8 => (s.to_string(), format!(".{}", e)),
-            _ => (basisname.clone(), String::new()),
+        // 2) freien Namen suchen, 3) als Benutzer einsortieren
+        let ziel = if ganz {
+            Dienst::freier_name(&format!("{}/{}/{}", heim, name, ordnername), "", false)
+        } else {
+            Dienst::freier_name(&format!("{}/{}/{}", heim, name, rel), "zurückgeholt", true)
         };
-        let eltern = Path::new(&ziel_basis).parent().map(|p| p.to_string_lossy().into_owned()).unwrap_or_default();
-        let mut ziel = ziel_basis.clone();
-        let mut n = 1;
-        while Path::new(&ziel).symlink_metadata().is_ok() && n < 100 {
-            ziel = format!("{}/{} (zurückgeholt{}){}", eltern, stamm, if n == 1 { String::new() } else { format!(" {}", n) }, endung);
-            n += 1;
-        }
-        let als = |args: &[&str]| -> bool {
-            let mut a = vec![format!("--reuid={}", uid), format!("--regid={}", gid), "--clear-groups".to_string(), "--".to_string()];
-            a.extend(args.iter().map(|s| s.to_string()));
-            let r: Vec<&str> = a.iter().map(|s| s.as_str()).collect();
-            matches!(datei::befehl("setpriv", &r, 3600), Some((0, _)))
-        };
-        let gut = als(&["mkdir", "-p", &eltern]) && als(&["cp", "-a", "--reflink=auto", "--no-target-directory", &inhalt, &ziel]);
-        aufraeumen();
-        if !gut {
-            return fehler("Einsortieren in deinen Ordner fehlgeschlagen");
+        if let Err(e) = Dienst::einsortieren(uid, gid, &fach, &oberstes, &inhalt, &ziel) {
+            return fehler(&e);
         }
         let anzeigen = ziel.trim_start_matches(&format!("{}/{}/", heim, name)).to_string();
         ok(vec![("text", J::t(format!("Zurückgeholt: {}", anzeigen))), ("pfad", J::t(ziel))])
+    }
+
+    /// Alle Stände, in denen es diese Datei gibt – gleiche Fassungen nur einmal (neueste zuerst)
+    fn versionen(&self, uid: u32, pfad: &str) -> String {
+        let (Some((name, _)), Some(rel)) = (self.heim_name(uid), sauber(pfad)) else { return fehler("Ungültiger Pfad") };
+        if rel.is_empty() {
+            return fehler("Ungültiger Pfad");
+        }
+        let (orte_liste, lager) = {
+            let g = self.g.lock().unwrap();
+            (schnappschuss::liste(&g.orte), g.orte.lager.clone())
+        };
+        let mut l = Vec::new();
+        let mut zuletzt: Option<(u64, i64)> = None;
+        for s in orte_liste.iter().rev() {
+            let basis = format!("{}/{}/{}", lager, s, name);
+            let q = format!("{}/{}", basis, rel);
+            let Ok(m) = Path::new(&q).symlink_metadata() else { continue };
+            match fs::canonicalize(Path::new(&q).parent().unwrap_or(Path::new("/"))) {
+                Ok(p) if p.starts_with(&basis) => {}
+                _ => continue,
+            }
+            let fassung = (m.len(), m.mtime());
+            if zuletzt == Some(fassung) {
+                continue;
+            }
+            zuletzt = Some(fassung);
+            l.push(J::o(vec![("quelle", J::t("s")), ("id", J::t(s.to_string())), ("zeit", J::I(s * 1000)),
+                             ("groesse", J::I(m.len() as i64)), ("geaendert", J::I(m.mtime() * 1000)), ("ordner", J::B(m.is_dir()))]));
+        }
+        ok(vec![("versionen", J::L(l))])
+    }
+
+    /// Nach einem Erpresser-Angriff: was hat sich seit `seit` gegenüber dem letzten sauberen Schnappschuss
+    /// verändert oder ist verschwunden?
+    fn rettung_suchen(&self, uid: u32, seit_ms: i64) -> Result<(i64, String, Vec<String>), String> {
+        let (name, _) = self.heim_name(uid).ok_or("Benutzerordner unbekannt")?;
+        let (liste, lager, heim) = {
+            let g = self.g.lock().unwrap();
+            (schnappschuss::liste(&g.orte), g.orte.lager.clone(), g.orte.heim.clone())
+        };
+        let stand = *liste.iter().filter(|s| **s * 1000 < seit_ms).last().ok_or("Es gibt keinen Schnappschuss von vor dem Angriff.")?;
+        let basis = format!("{}/{}/{}", lager, stand, name);
+        let jetzt = format!("{}/{}", heim, name);
+        let seit = seit_ms / 1000;
+        let mut l = Vec::new();
+        let mut stapel = vec![String::new()];
+        let mut gesehen = 0usize;
+        while let Some(rel) = stapel.pop() {
+            let Ok(it) = fs::read_dir(if rel.is_empty() { basis.clone() } else { format!("{}/{}", basis, rel) }) else { continue };
+            for e in it.flatten() {
+                gesehen += 1;
+                if gesehen > 300_000 {
+                    break;
+                }
+                let n = e.file_name().to_string_lossy().into_owned();
+                let r = if rel.is_empty() { n.clone() } else { format!("{}/{}", rel, n) };
+                if r == ".cache" || r == ".local/share/Trash" {
+                    continue;
+                }
+                let Ok(m) = e.path().symlink_metadata() else { continue };
+                if m.is_dir() {
+                    stapel.push(r);
+                } else if m.is_file() {
+                    let geaendert = match Path::new(&format!("{}/{}", jetzt, r)).symlink_metadata() {
+                        Err(_) => true,
+                        Ok(h) => h.mtime() >= seit && (h.len() != m.len() || h.mtime() != m.mtime()),
+                    };
+                    if geaendert {
+                        l.push(r);
+                    }
+                }
+            }
+        }
+        l.sort();
+        Ok((stand, name, l))
+    }
+
+    fn rettung(&self, uid: u32, seit_ms: i64) -> String {
+        match self.rettung_suchen(uid, seit_ms) {
+            Ok((stand, _, l)) => ok(vec![("stand", J::t(stand.to_string())), ("zeit", J::I(stand * 1000)), ("anzahl", J::I(l.len() as i64)),
+                                         ("beispiele", J::texte(&l.iter().take(14).cloned().collect::<Vec<_>>()))]),
+            Err(e) => fehler(&e),
+        }
+    }
+
+    /// betroffene Dateien aus dem sauberen Stand in einen eigenen Ordner „Gerettet …“ zurückholen
+    fn rettung_los(&self, uid: u32, seit_ms: i64, ordnername: &str) -> String {
+        if !ordnername_ok(ordnername) {
+            return fehler("Ungültiger Ordnername");
+        }
+        let (stand, name, l) = match self.rettung_suchen(uid, seit_ms) {
+            Ok(x) => x,
+            Err(e) => return fehler(&e),
+        };
+        if l.is_empty() {
+            return fehler("Keine betroffenen Dateien gefunden.");
+        }
+        let Some((_, gid)) = self.heim_name(uid) else { return fehler("Benutzerordner unbekannt") };
+        let (lager, heim) = {
+            let g = self.g.lock().unwrap();
+            (g.orte.lager.clone(), g.orte.heim.clone())
+        };
+        let fach = match self.fach_neu() {
+            Ok(f) => f,
+            Err(e) => return fehler(&e),
+        };
+        let inhalt = format!("{}/gerettet", fach);
+        let mut kopiert = 0;
+        for r in &l {
+            let von = format!("{}/{}/{}/{}", lager, stand, name, r);
+            let nach = format!("{}/{}", inhalt, r);
+            if let Some(p) = Path::new(&nach).parent() {
+                let _ = fs::create_dir_all(p);
+            }
+            // std::fs::copy nutzt auf btrfs „reflink“ – kostet keinen Platz
+            if fs::copy(&von, &nach).is_ok() {
+                if let Ok(m) = Path::new(&von).symlink_metadata() {
+                    if let (Ok(f), Ok(t)) = (fs::File::options().write(true).open(&nach), m.modified()) {
+                        let _ = f.set_modified(t);
+                    }
+                }
+                kopiert += 1;
+            }
+        }
+        if kopiert == 0 {
+            let _ = datei::befehl("rm", &["-rf", "--one-file-system", &fach], 600);
+            return fehler("Nichts ließ sich kopieren");
+        }
+        let ziel = Dienst::freier_name(&format!("{}/{}/{}", heim, name, ordnername), "", false);
+        if let Err(e) = Dienst::einsortieren(uid, gid, &fach, &inhalt, &inhalt, &ziel) {
+            return fehler(&e);
+        }
+        ok(vec![("text", J::t(format!("{} Dateien gerettet nach „{}“", kopiert, ziel.rsplit('/').next().unwrap_or("")))), ("pfad", J::t(ziel))])
+    }
+
+    /// Neuer Rechner / neu eingerichtet: Notfall-Schlüssel der Festplatte übernehmen
+    fn notfall_eingeben(&self, schluessel: &str) -> String {
+        let s: String = schluessel.trim().to_uppercase().chars().filter(|c| c.is_ascii_alphanumeric() || *c == '-').collect();
+        if s.replace('-', "").len() < 20 {
+            return fehler("Der Notfall-Schlüssel ist zu kurz.");
+        }
+        let lw = sicherung::laufwerk();
+        if lw.is_empty() {
+            return fehler("Bitte die Festplatte AURILIUX anschließen.");
+        }
+        let Ok(_f) = self.frei.try_lock() else { return fehler("Die Sicherung läuft gerade – bitte kurz warten.") };
+        let daten = self.g.lock().unwrap().daten.clone();
+        match sicherung::schluessel_pruefen(&daten, &lw, &s) {
+            Ok(()) => {
+                let _ = datei::schreiben(&format!("{}/schluessel", daten), format!("{}\n", s).as_bytes(), 0o600);
+                let mut z = self.sz.lock().unwrap();
+                z.ergebnis.clear();
+                ok(vec![("text", J::t("Schlüssel passt – die Sicherungen auf der Festplatte sind jetzt erreichbar."))])
+            }
+            Err(e) => fehler(&e),
+        }
     }
 
     fn kunde(&self, s: UnixStream) {
@@ -345,7 +537,12 @@ impl Dienst {
             }
             ["liste", _] => self.liste(),
             ["ordner", _, quelle, id, pfad] => self.ordner(uid, quelle, id, pfad),
-            ["zurueckholen", _, quelle, id, pfad] => self.zurueckholen(uid, quelle, id, pfad),
+            ["zurueckholen", _, quelle, id, pfad] => self.zurueckholen(uid, quelle, id, pfad, ""),
+            ["alles", _, quelle, id, ordnername] => self.zurueckholen(uid, quelle, id, "", ordnername),
+            ["versionen", _, pfad] => self.versionen(uid, pfad),
+            ["rettung", _, seit] => self.rettung(uid, seit.parse().unwrap_or(0)),
+            ["rettung-los", _, seit, ordnername] => self.rettung_los(uid, seit.parse().unwrap_or(0), ordnername),
+            ["notfall-eingeben", _, schluessel] => self.notfall_eingeben(schluessel),
             _ => fehler("Unbekannter Befehl"),
         };
         let _ = (&s).write_all(antwort.as_bytes());

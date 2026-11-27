@@ -142,6 +142,10 @@ pub fn sichern(daten: &str, heim: &str, zustand: &Arc<Mutex<Zustand>>, frei: &Ar
     }).unwrap_or_default();
     let ok = kind.wait().map(|s| s.success() || s.code() == Some(3)).unwrap_or(false);   // 3 = einzelne Dateien nicht lesbar
     if !ok {
+        if fehler.contains("wrong password") || fehler.contains("no key found") {
+            ende("schluessel-falsch".into(), None);
+            return;
+        }
         ende(fehler.lines().filter(|z| !z.trim().is_empty()).last().unwrap_or("Sicherung fehlgeschlagen").to_string(), None);
         return;
     }
@@ -159,6 +163,24 @@ pub fn zustand_laden(daten: &str) -> Zustand {
         letzte: j.feld("letzte").and_then(|x| x.als_zahl()).unwrap_or(0),
         ergebnis: j.text_von("ergebnis"),
         anzahl: j.feld("anzahl").and_then(|x| x.als_zahl()).unwrap_or(0),
+    }
+}
+
+/// Passt dieser Notfall-Schlüssel zur Sicherung auf der Festplatte?
+pub fn schluessel_pruefen(daten: &str, laufwerk: &str, schluessel: &str) -> Result<(), String> {
+    if !Path::new(&format!("{}/config", ablage(laufwerk))).exists() {
+        return Err("Auf der Festplatte gibt es noch keine Tresor-Sicherung.".into());
+    }
+    let probe = format!("{}/schluessel.probe", daten);
+    datei::schreiben(&probe, format!("{}\n", schluessel).as_bytes(), 0o600).map_err(|e| e.to_string())?;
+    let r = Command::new("restic").arg("-r").arg(ablage(laufwerk)).arg("--password-file").arg(&probe)
+        .arg("--cache-dir").arg(CACHE).args(["cat", "config"]).env("LC_ALL", "C")
+        .stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).status();
+    let _ = fs::remove_file(&probe);
+    match r {
+        Ok(s) if s.success() => Ok(()),
+        Ok(_) => Err("Dieser Schlüssel passt nicht zur Sicherung auf der Festplatte.".into()),
+        Err(e) => Err(format!("restic fehlt: {}", e)),
     }
 }
 

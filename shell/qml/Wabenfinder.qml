@@ -227,6 +227,7 @@ Window {
             { symbol: "rename", text: "Umbe-\nnennen", tun: () => umbenennen(it) },
             { symbol: "copy", text: "Pfad\nkopieren", tun: () => { Dateien.pfadKopieren(it.path); hinweis("Pfad kopiert") } },
             { symbol: "terminal", text: "Im\nTerminal", tun: () => System.starte("foot", ["--working-directory=" + (it.dir ? it.path : aktuell.path)]) },
+            { symbol: "versionen", text: "Ältere\nVersionen", tun: () => System.starte("auriliux-shell", ["tresor", "versionen", it.path]) },
             { symbol: "trash", text: "Papier-\nkorb", gefahr: true, tun: () => wegwerfen(it) }
         ]
     }

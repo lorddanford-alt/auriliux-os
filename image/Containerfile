@@ -4,7 +4,7 @@
 FROM quay.io/fedora/fedora:45 AS bau
 RUN dnf -y install --setopt=install_weak_deps=False \
         cmake ninja-build gcc-c++ qt6-qtbase-devel qt6-qtbase-private-devel qt6-qtdeclarative-devel \
-        layer-shell-qt-devel qt6-qtwayland-devel wayland-devel wayland-protocols-devel pam-devel pkgconf-pkg-config \
+        layer-shell-qt-devel qt6-qtwayland-devel qt6-qtmultimedia-devel wayland-devel wayland-protocols-devel pam-devel pkgconf-pkg-config \
         rust cargo \
     && dnf clean all
 # Dienste in Rust (nur Standardbibliothek – nichts wird aus dem Netz nachgeladen)

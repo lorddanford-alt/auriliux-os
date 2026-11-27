@@ -6,6 +6,7 @@
 import QtQuick
 import QtQuick.Window
 import QtQuick.Shapes
+import QtMultimedia
 
 Window {
     id: tw
@@ -70,6 +71,7 @@ Window {
         fehlerAnzeige = false
         hinweis = ""
         zahlen = zahlen.concat([z])
+        klang("rast")
         if (zahlen.length === 3) Qt.callLater(codeFertig)
     }
     function zurueck() { if (!pruefe && zahlen.length) zahlen = zahlen.slice(0, -1) }
@@ -94,7 +96,7 @@ Window {
             } else TresorDienst.befehl("code-aendern", ["code-aendern", karte, code])
         }
     }
-    function fehler(t) { fehlerAnzeige = true; hinweis = t; zahlen = []; wackeln.restart() }
+    function fehler(t) { fehlerAnzeige = true; hinweis = t; zahlen = []; wackeln.restart(); klang("fehler") }
     Timer {
         id: vorschauPruefung; interval: 700; property string code: ""
         onTriggered: tw.verarbeiten("oeffnen", code === "12-34-56" ? { ok: true, karte: "vorschau" } : { ok: false, fehler: "Falscher Code – noch 4 Versuche bis zur Sperre." })
@@ -185,6 +187,16 @@ Window {
                 if (d.ok) tw.inhalt = d.eintraege || []; else { tw.inhalt = []; tw.melden(d.fehler, true) }
             } else if (kennung === "zurueckholen") {
                 if (d.ok) { tw.melden(d.text); tw.zuletztZurueck = d.pfad } else tw.melden(d.fehler, true)
+            } else if (kennung === "versionen") {
+                if (d.ok) tw.versionen = { pfad: tw.versionen ? tw.versionen.pfad : "", liste: d.versionen || [], laedt: false }
+                else { tw.versionen = null; tw.melden(d.fehler, true) }
+            } else if (kennung === "rettung") {
+                if (d.ok) tw.rettung = Object.assign({}, tw.rettung, { laedt: false, stand: d.stand, zeit: d.zeit, anzahl: d.anzahl, beispiele: d.beispiele || [] })
+                else tw.rettung = Object.assign({}, tw.rettung, { laedt: false, fehler: d.fehler })
+            } else if (kennung === "rettung-los" || kennung === "alles") {
+                if (d.ok) { tw.melden(d.text); tw.zuletztZurueck = d.pfad; if (kennung === "rettung-los") tw.rettung = null } else tw.melden(d.fehler, true)
+            } else if (kennung === "notfall-eingeben") {
+                if (d.ok) { tw.schluesselEingabe = false; tw.melden(d.text); tw.listeLaden() } else tw.melden(d.fehler, true)
             } else if (kennung === "notfall") {
                 if (d.ok) { tw.notfall = d.notfall; tw.notfallZeigen = true } else tw.melden(d.fehler, true)
             } else if (kennung === "jetzt") {
@@ -193,12 +205,80 @@ Window {
         }
     }
     property string zuletztZurueck: ""
+    // Aufruf von außen: „tresor versionen <pfad>“ (Wabenfinder) oder „tresor rettung <zeit>“ (Guardian)
+    property string startModus: ""
+    property string startWert: ""
+    property var versionen: null            // { pfad, liste, laedt }
+    property var rettung: null              // { seit, stand, zeit, anzahl, beispiele, laedt }
+    property bool schluesselEingabe: false
+    property bool tonAn: System.einstellung("tresor-ton").trim() !== "aus"
+
+    // ── Geräusche (selbst erzeugt, siehe klang.cpp) ──
+    SoundEffect { id: tonKlick; source: Klang.datei("klick"); volume: 0.5 }
+    SoundEffect { id: tonRast; source: Klang.datei("rast"); volume: 0.8 }
+    SoundEffect { id: tonFehler; source: Klang.datei("fehler"); volume: 0.8 }
+    SoundEffect { id: tonVentil; source: Klang.datei("ventil"); volume: 0.8 }
+    SoundEffect { id: tonRiegel; source: Klang.datei("riegel"); volume: 0.9 }
+    SoundEffect { id: tonTuer; source: Klang.datei("tuer"); volume: 0.8 }
+    property real letzterKlick: 0
+    function klang(n) {
+        if (!tonAn) return
+        if (n === "klick") { const j = Date.now(); if (j - letzterKlick < 28) return; letzterKlick = j; tonKlick.play() }
+        else ({ rast: tonRast, fehler: tonFehler, ventil: tonVentil, riegel: tonRiegel, tuer: tonTuer })[n].play()
+    }
+
+    function wann(ms) { const t = tag(ms), d = new Date(ms); return (t === "HEUTE" ? "heute" : t === "GESTERN" ? "gestern" : "am " + zwei(d.getDate()) + "." + zwei(d.getMonth() + 1) + ".") + " um " + uhr(ms) + " Uhr" }
+    function datumOrdner(ms) { const d = new Date(ms); return zwei(d.getDate()) + "." + zwei(d.getMonth() + 1) + "." + d.getFullYear() + " " + zwei(d.getHours()) + "-" + zwei(d.getMinutes()) }
+    function standText(ms) { return tag(ms).toLowerCase().replace(/^./, c => c.toUpperCase()) + ", " + uhr(ms) + " Uhr" }
+    function relativ(pfad) {
+        const h = System.umgebung("HOME")
+        for (const v of [h, h.replace(/^\/var\/home/, "/home"), h.replace(/^\/home/, "/var/home")])
+            if (pfad.startsWith(v + "/")) return pfad.slice(v.length + 1)
+        return ""
+    }
+    function nachDemOeffnen() {
+        if (startModus === "versionen" && startWert) versionenLaden(relativ(startWert))
+        else if (startModus === "rettung" && startWert) rettungLaden(Number(startWert))
+        startModus = ""
+    }
+    function versionenLaden(rel) {
+        if (!rel) { melden("Ältere Versionen gibt es nur für Dateien in deinem persönlichen Ordner", true); return }
+        versionen = { pfad: rel, liste: [], laedt: true }
+        if (vorschau.startsWith("tresor")) {
+            const j = Date.now()
+            versionen = { pfad: rel, laedt: false, liste: [{ quelle: "s", id: "1", zeit: j - 1260e3, groesse: 48211, geaendert: j - 1500e3 },
+                { quelle: "s", id: "2", zeit: j - 4 * 3600e3, groesse: 47002, geaendert: j - 5 * 3600e3 },
+                { quelle: "s", id: "3", zeit: j - 864e5, groesse: 39120, geaendert: j - 26 * 3600e3 },
+                { quelle: "s", id: "4", zeit: j - 3 * 864e5, groesse: 21877, geaendert: j - 4 * 864e5 }] }
+            return
+        }
+        TresorDienst.befehl("versionen", ["versionen", karte, rel])
+    }
+    function rettungLaden(zeit) {
+        const seit = zeit - 5 * 60000             // etwas vor der Entdeckung – der Angriff lief da schon
+        rettung = { seit: seit, entdeckt: zeit, laedt: true, anzahl: 0, beispiele: [] }
+        if (vorschau.startsWith("tresor")) {
+            rettung = { seit: seit, entdeckt: zeit, laedt: false, stand: "1", zeit: zeit - 23 * 60000, anzahl: 37,
+                        beispiele: ["Dokumente/Bewerbung.pdf", "Dokumente/Rechnungen/2026-11.pdf", "Dokumente/Vertrag.pdf", "Bilder/Urlaub/Strand.jpg", "Bilder/Urlaub/Abend.jpg", "Schreibtisch/plan.md"] }
+            return
+        }
+        TresorDienst.befehl("rettung", ["rettung", karte, String(seit)])
+    }
+    function zurueckholenAus(quelle, id, rel) {
+        if (vorschau.startsWith("tresor")) { melden("Zurückgeholt: " + rel); return }
+        melden("Hole „" + rel.split("/").pop() + "“ zurück …")
+        TresorDienst.befehl("zurueckholen", ["zurueckholen", karte, quelle, id, rel])
+    }
     function verarbeiten(kennung, d) { antworten.verarbeiten(kennung, d) }
 
     Component.onCompleted: {
         if (vorschau === "tresor-neu") { modus = "neu"; zahlen = [27, 8] }
         else if (!codeGesetzt && TresorDienst.da) modus = "neu"
         if (vorschau === "tresor-fehler") Qt.callLater(() => { zahlen = [12, 33]; einrasten(70) })
+        if (vorschau === "tresor-versionen" || vorschau === "tresor-rettung") {
+            karte = "vorschau"; phase = "innen"; innen.opacity = 1; innen.scale = 1; listeLaden()
+            if (vorschau === "tresor-versionen") versionenLaden("Dokumente/Bewerbung.pdf"); else rettungLaden(Date.now() - 2 * 60000)
+        }
         if (vorschau === "tresor-offen") { karte = "vorschau"; phase = "innen"; innen.opacity = 1; innen.scale = 1; listeLaden(); Qt.callLater(() => fachOeffnen(eintraege[1])) }
         if (vorschau === "tresor-oeffnet") Qt.callLater(() => { zahlen = [12, 34]; einrasten(56) })
         tastatur.forceActiveFocus()
@@ -230,6 +310,8 @@ Window {
         property bool ziehen: false
         readonly property int zahl: ((Math.round(drehung / 3.6) % 100) + 100) % 100
         signal eingerastet(int zahl)
+        signal tick()
+        onZahlChanged: tick()
         width: 230; height: 230
         Behavior on drehung { enabled: !ds.ziehen; NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
         // fester Ring mit Marke
@@ -387,6 +469,7 @@ Window {
             }
             Row {
                 anchors.right: parent.right; anchors.rightMargin: 24; anchors.verticalCenter: parent.verticalCenter; spacing: 10
+                Knopf { text: tw.tonAn ? "Ton an" : "Ton aus"; art: "leise"; onGeklickt: { tw.tonAn = !tw.tonAn; System.schreibe("tresor-ton", tw.tonAn ? "an" : "aus") } }
                 Knopf { text: "Code ändern"; art: "leise"; onGeklickt: { tw.zahlen = []; tw.modus = "aendern"; tw.hinweis = ""; tw.aendernOffen = true; tastatur.forceActiveFocus() } }
                 Knopf { text: "Notfall-Schlüssel"; art: "leise"
                         onGeklickt: { if (tw.vorschau.startsWith("tresor")) { tw.notfall = "K7QM-3XRA-9VTE-HN2D-W5PJ-C8YF-B4ZS-6GMR"; tw.notfallZeigen = true } else TresorDienst.befehl("notfall", ["notfall", tw.karte]) } }
@@ -407,10 +490,12 @@ Window {
                       zeile2: zustand.s.moeglich ? "Letzter " + tw.vor(zustand.s.letzter) : "", knopf: zustand.s.moeglich ? "Jetzt aufnehmen" : "", befehl: "schnappschuss-jetzt" },
                     { titel: "FESTPLATTE AURILIUX", farbe: zustand.a.laufwerk ? (zustand.a.ergebnis === "ok" || !zustand.a.ergebnis ? Theme.gruen : Theme.rot) : Theme.leise,
                       zeile1: zustand.a.laeuft ? "Sichert … " + Math.round((zustand.a.prozent || 0) * 100) + " %"
-                              : zustand.a.laufwerk ? (zustand.a.ergebnis && zustand.a.ergebnis !== "ok" ? zustand.a.ergebnis : "Angeschlossen · " + (zustand.a.anzahl || 0) + " Stände")
+                              : zustand.a.laufwerk ? (zustand.a.ergebnis === "schluessel-falsch" ? "Gesichert mit einem anderen Notfall-Schlüssel"
+                                                     : zustand.a.ergebnis && zustand.a.ergebnis !== "ok" ? zustand.a.ergebnis : "Angeschlossen · " + (zustand.a.anzahl || 0) + " Stände")
                               : "Nicht angeschlossen",
                       zeile2: "Zuletzt gesichert " + tw.vor(zustand.a.letzte) + " · verschlüsselt",
-                      knopf: zustand.a.laufwerk && !zustand.a.laeuft ? "Jetzt sichern" : "", befehl: "sichern-jetzt" }]
+                      knopf: zustand.a.ergebnis === "schluessel-falsch" ? "Schlüssel eingeben" : zustand.a.laufwerk && !zustand.a.laeuft ? "Jetzt sichern" : "",
+                      befehl: zustand.a.ergebnis === "schluessel-falsch" ? "schluessel" : "sichern-jetzt" }]
                 Item {
                     required property var modelData
                     width: (zustand.width - 14) / 2; height: 74
@@ -423,7 +508,7 @@ Window {
                         Text { visible: text !== ""; width: parent.width; elide: Text.ElideRight; text: modelData.zeile2; color: Theme.leise; font.family: Theme.schrift; font.pixelSize: 11 }
                     }
                     Knopf { visible: modelData.knopf !== ""; anchors.right: parent.right; anchors.rightMargin: 16; anchors.verticalCenter: parent.verticalCenter; text: modelData.knopf
-                            onGeklickt: { if (tw.vorschau.startsWith("tresor")) tw.melden("Läuft"); else TresorDienst.befehl("jetzt", [modelData.befehl]) } }
+                            onGeklickt: { if (modelData.befehl === "schluessel") tw.schluesselEingabe = true; else if (tw.vorschau.startsWith("tresor")) tw.melden("Läuft"); else TresorDienst.befehl("jetzt", [modelData.befehl]) } }
                 }
             }
         }
@@ -516,7 +601,17 @@ Window {
                         Text { text: tw.fach ? "Stand " + tw.tag(tw.fach.zeit).toLowerCase().replace(/^./, c => c.toUpperCase()) + ", " + tw.uhr(tw.fach.zeit) + " Uhr" : ""
                                color: "#ffffff"; font.family: Theme.schrift; font.pixelSize: 15; font.weight: Font.DemiBold }
                     }
-                    Knopf { id: zu; text: "Fach schließen"; art: "leise"; onGeklickt: { tw.fach = null; tw.inhalt = [] } }
+                    Row {
+                        id: zu; spacing: 8
+                        Knopf { text: "Ganzes Fach zurückholen"; nachfrage: "Alles zurückholen?"
+                                onGeklickt: {
+                                    const n = "Tresor-Stand " + tw.datumOrdner(tw.fach.zeit)
+                                    if (tw.vorschau.startsWith("tresor")) { tw.melden("Zurückgeholt nach „" + n + "“"); return }
+                                    tw.melden("Hole den ganzen Stand zurück – das kann dauern …")
+                                    TresorDienst.befehl("alles", ["alles", tw.karte, tw.fach.quelle, tw.fach.id, n])
+                                } }
+                        Knopf { text: "Fach schließen"; art: "leise"; onGeklickt: { tw.fach = null; tw.inhalt = [] } }
+                    }
                 }
                 // Brotkrumen
                 Flow {
@@ -696,6 +791,7 @@ Window {
                 width: tuer.width * 0.34; height: width
                 x: tuer.width * 0.29 - width / 2; y: tuer.height * 0.62 - height / 2
                 onEingerastet: (z) => tw.einrasten(z)
+                onTick: tw.klang("klick")
             }
             Ventil {
                 id: ventil
@@ -753,15 +849,18 @@ Window {
     SequentialAnimation {
         id: oeffnen
         PauseAnimation { duration: 250 }
+        ScriptAction { script: tw.klang("ventil") }
         // Ventil dreht sich, das Drehschloss läuft mit zurück auf 0
         ParallelAnimation {
             NumberAnimation { target: ventil; property: "rotation"; from: 0; to: 300; duration: 1500; easing.type: Easing.InOutCubic }
             NumberAnimation { target: drehschloss; property: "drehung"; to: 0; duration: 900; easing.type: Easing.OutCubic }
         }
         // Riegel fahren ein
+        ScriptAction { script: tw.klang("riegel") }
         NumberAnimation { target: tuer; property: "riegel"; to: 0; duration: 520; easing.type: Easing.InOutQuad }
         PauseAnimation { duration: 120 }
         // Tür schwingt auf, dahinter der Innenraum
+        ScriptAction { script: tw.klang("tuer") }
         ParallelAnimation {
             NumberAnimation { target: schwung; property: "angle"; to: -96; duration: 1300; easing.type: Easing.InOutCubic }
             NumberAnimation { target: tuer; property: "opacity"; to: 0; duration: 1300; easing.type: Easing.InQuart }
@@ -769,17 +868,18 @@ Window {
             NumberAnimation { target: innen; property: "opacity"; from: 0; to: 1; duration: 1100; easing.type: Easing.InQuad }
             NumberAnimation { target: innen; property: "scale"; from: 0.94; to: 1; duration: 1300; easing.type: Easing.OutCubic }
         }
-        ScriptAction { script: tw.phase = "innen" }
+        ScriptAction { script: { tw.phase = "innen"; tw.nachDemOeffnen() } }
     }
     SequentialAnimation {
         id: schliessen
-        ScriptAction { script: { tuer.opacity = 0; rahmen.opacity = 0; schwung.angle = -96 } }
+        ScriptAction { script: { tuer.opacity = 0; rahmen.opacity = 0; schwung.angle = -96; tw.klang("tuer") } }
         ParallelAnimation {
             NumberAnimation { target: innen; property: "opacity"; to: 0; duration: 700 }
             NumberAnimation { target: schwung; property: "angle"; to: 0; duration: 1000; easing.type: Easing.OutCubic }
             NumberAnimation { target: tuer; property: "opacity"; to: 1; duration: 600 }
             NumberAnimation { target: rahmen; property: "opacity"; to: 1; duration: 600 }
         }
+        ScriptAction { script: tw.klang("riegel") }
         NumberAnimation { target: tuer; property: "riegel"; to: 1; duration: 380; easing.type: Easing.OutBack }
         NumberAnimation { target: ventil; property: "rotation"; to: 0; duration: 900; easing.type: Easing.InOutCubic }
         ScriptAction { script: { tw.phase = "tuer"; innen.scale = 0.96; tastatur.forceActiveFocus() } }
@@ -806,10 +906,152 @@ Window {
                     }
                 }
             }
-            Drehschloss { id: aendernSchloss; anchors.horizontalCenter: parent.horizontalCenter; width: 260; height: 260; onEingerastet: (z) => tw.einrasten(z) }
+            Drehschloss { id: aendernSchloss; anchors.horizontalCenter: parent.horizontalCenter; width: 260; height: 260; onEingerastet: (z) => tw.einrasten(z); onTick: tw.klang("klick") }
             Text { anchors.horizontalCenter: parent.horizontalCenter; text: tw.hinweis || "Drei Zahlen einrasten – danach zur Bestätigung noch einmal"
                    color: tw.fehlerAnzeige ? Theme.rot : Theme.text; font.family: Theme.schrift; font.pixelSize: 13 }
             Knopf { anchors.horizontalCenter: parent.horizontalCenter; text: "Abbrechen"; art: "leise"; onGeklickt: { tw.aendernOffen = false; tw.modus = "oeffnen"; tw.zahlen = []; tw.hinweis = "" } }
+        }
+    }
+
+    // ════════ Ältere Versionen einer Datei ════════
+    Rectangle {
+        visible: !!tw.versionen
+        anchors.fill: parent
+        color: Qt.rgba(0, 0, 0, 0.86)
+        MouseArea { anchors.fill: parent }
+        Item {
+            anchors.centerIn: parent
+            width: Math.min(720, tw.width - 80); height: Math.min(560, tw.height - 80)
+            Fase { anchors.fill: parent; fase: 18 }
+            Column {
+                x: 26; y: 22; width: parent.width - 52; spacing: 10
+                Row {
+                    width: parent.width
+                    Column {
+                        width: parent.width - vzu.width; spacing: 4
+                        Text { text: "ÄLTERE VERSIONEN"; color: Theme.akzent; font.family: Theme.monoSchrift; font.pixelSize: 12; font.weight: Font.Bold; font.letterSpacing: 3 }
+                        Text { width: parent.width; elide: Text.ElideMiddle; text: tw.versionen ? tw.versionen.pfad : ""; color: "#ffffff"; font.family: Theme.schrift; font.pixelSize: 16; font.weight: Font.DemiBold }
+                    }
+                    Knopf { id: vzu; text: "Schließen"; art: "leise"; onGeklickt: tw.versionen = null }
+                }
+                Text { width: parent.width; wrapMode: Text.WordWrap; color: Theme.leise; font.family: Theme.schrift; font.pixelSize: 12
+                       text: "Jede Zeile ist eine andere Fassung aus den Schnappschüssen am Mac. Zurückgeholt wird neben die jetzige Datei – sie bleibt, wie sie ist." }
+                Rectangle { width: parent.width; height: 1; color: Theme.gold_a(0.15) }
+            }
+            ListView {
+                x: 14; y: 128; width: parent.width - 28; height: parent.height - y - 18
+                clip: true; boundsBehavior: Flickable.StopAtBounds
+                model: tw.versionen ? tw.versionen.liste : []
+                delegate: Item {
+                    required property var modelData
+                    required property int index
+                    width: ListView.view.width; height: 52
+                    Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Theme.gold_a(0.08) }
+                    Rectangle { x: 12; anchors.verticalCenter: parent.verticalCenter; width: 10; height: 10; rotation: 45; color: index === 0 ? Theme.akzent : "transparent"; border.width: 1.5; border.color: Theme.akzent }
+                    Column {
+                        x: 36; anchors.verticalCenter: parent.verticalCenter
+                        Text { text: "Stand " + tw.standText(modelData.zeit); color: Theme.text; font.family: Theme.schrift; font.pixelSize: 14 }
+                        Text { text: tw.groesse(modelData.groesse) + " · zuletzt geändert " + new Date(modelData.geaendert).toLocaleDateString(tw.de, "dd.MM.") + " " + tw.uhr(modelData.geaendert)
+                               color: Theme.leise; font.family: Theme.monoSchrift; font.pixelSize: 10 }
+                    }
+                    Knopf { anchors.right: parent.right; anchors.rightMargin: 8; anchors.verticalCenter: parent.verticalCenter; text: "Zurückholen"
+                            onGeklickt: tw.zurueckholenAus(modelData.quelle, modelData.id, tw.versionen.pfad) }
+                }
+                Text { anchors.centerIn: parent; visible: !!tw.versionen && (tw.versionen.laedt || tw.versionen.liste.length === 0)
+                       text: tw.versionen && tw.versionen.laedt ? "Suche in den Schnappschüssen …" : "In keinem Schnappschuss gefunden"
+                       color: Theme.leise; font.family: Theme.schrift; font.pixelSize: 13 }
+            }
+        }
+    }
+
+    // ════════ Rettung nach einem Erpresser-Angriff (aus Guardian) ════════
+    Rectangle {
+        visible: !!tw.rettung
+        anchors.fill: parent
+        color: Qt.rgba(0, 0, 0, 0.88)
+        MouseArea { anchors.fill: parent }
+        Item {
+            anchors.centerIn: parent
+            width: Math.min(760, tw.width - 80); height: rettungSpalte.height + 48
+            Fase { anchors.fill: parent; fase: 18; rand: Qt.rgba(1, 0.37, 0.43, 0.5) }
+            Rectangle { width: 4; height: parent.height; color: Theme.rot }
+            Column {
+                id: rettungSpalte
+                x: 30; y: 24; width: parent.width - 60; spacing: 12
+                Text { text: "RETTUNG NACH DEM ERPRESSER-ANGRIFF"; color: Theme.rot; font.family: Theme.monoSchrift; font.pixelSize: 12; font.weight: Font.Bold; font.letterSpacing: 2.6 }
+                Text { width: parent.width; wrapMode: Text.WordWrap; color: "#ffffff"; font.family: Theme.schrift; font.pixelSize: 16; font.weight: Font.DemiBold
+                       text: tw.rettung ? "Guardian hat " + tw.wann(tw.rettung.entdeckt) + " ein Programm gestoppt, das deine Dateien verschlüsselt hat." : "" }
+                Text {
+                    width: parent.width; wrapMode: Text.WordWrap; color: Theme.text; font.family: Theme.schrift; font.pixelSize: 14; lineHeight: 1.2
+                    text: !tw.rettung ? "" : tw.rettung.laedt ? "Vergleiche mit dem letzten sauberen Schnappschuss …"
+                          : tw.rettung.fehler ? tw.rettung.fehler
+                          : "Letzter sauberer Stand: " + tw.standText(tw.rettung.zeit) + ". Seitdem wurden " + tw.rettung.anzahl + " Dateien verändert oder gelöscht:"
+                }
+                Column {
+                    visible: !!tw.rettung && !tw.rettung.laedt && !tw.rettung.fehler
+                    width: parent.width; spacing: 3
+                    Repeater {
+                        model: tw.rettung ? tw.rettung.beispiele : []
+                        Text { required property string modelData; width: rettungSpalte.width; elide: Text.ElideMiddle; text: "◆  " + modelData; color: Theme.leise; font.family: Theme.monoSchrift; font.pixelSize: 11 }
+                    }
+                    Text { visible: !!tw.rettung && tw.rettung.anzahl > (tw.rettung.beispiele || []).length; text: "… und " + (tw.rettung ? tw.rettung.anzahl - tw.rettung.beispiele.length : 0) + " weitere"
+                           color: Theme.leise; font.family: Theme.monoSchrift; font.pixelSize: 11 }
+                }
+                Text { width: parent.width; wrapMode: Text.WordWrap; color: Theme.leise; font.family: Theme.schrift; font.pixelSize: 12; lineHeight: 1.2
+                       text: "Die sauberen Fassungen kommen in einen neuen Ordner „Gerettet …“ in deinem persönlichen Ordner – deine jetzigen Dateien bleiben unberührt. Die verschlüsselten kannst du danach löschen." }
+                Row {
+                    spacing: 10; topPadding: 4
+                    Knopf {
+                        visible: !!tw.rettung && !tw.rettung.laedt && !tw.rettung.fehler && tw.rettung.anzahl > 0
+                        gefuellt: true; art: "gruen"
+                        text: tw.rettung ? "Alle " + tw.rettung.anzahl + " Dateien retten" : ""
+                        onGeklickt: {
+                            const n = "Gerettet " + tw.datumOrdner(tw.rettung.zeit)
+                            if (tw.vorschau.startsWith("tresor")) { tw.melden(tw.rettung.anzahl + " Dateien gerettet nach „" + n + "“"); tw.rettung = null; return }
+                            tw.melden("Rette die Dateien …")
+                            TresorDienst.befehl("rettung-los", ["rettung-los", tw.karte, String(tw.rettung.seit), n])
+                        }
+                    }
+                    Knopf { text: "Später"; art: "leise"; onGeklickt: tw.rettung = null }
+                }
+            }
+        }
+    }
+
+    // ════════ Notfall-Schlüssel eingeben (neuer Rechner / Festplatte von früher) ════════
+    Rectangle {
+        visible: tw.schluesselEingabe
+        anchors.fill: parent
+        color: Qt.rgba(0, 0, 0, 0.88)
+        MouseArea { anchors.fill: parent }
+        onVisibleChanged: if (visible) schluesselFeld.forceActiveFocus()
+        Column {
+            anchors.centerIn: parent; spacing: 16; width: Math.min(640, tw.width - 80)
+            Text { anchors.horizontalCenter: parent.horizontalCenter; text: "NOTFALL-SCHLÜSSEL EINGEBEN"; color: Theme.akzent; font.family: Theme.monoSchrift; font.pixelSize: 15; font.weight: Font.Bold; font.letterSpacing: 4 }
+            Text { width: parent.width; wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter; color: Theme.text; font.family: Theme.schrift; font.pixelSize: 13; lineHeight: 1.25
+                   text: "Die Sicherung auf dieser Festplatte stammt von einem anderen Rechner oder einer früheren Einrichtung. Gib den Notfall-Schlüssel ein, den du damals aufgeschrieben hast – danach sind alle Stände wieder da und neue Sicherungen kommen dazu." }
+            Rectangle {
+                width: parent.width; height: 64; radius: 8
+                gradient: Gradient { GradientStop { position: 0; color: "#d9bd6e" } GradientStop { position: 1; color: "#7a6328" } }
+                border.width: 2; border.color: "#3a2c0f"
+                TextInput {
+                    id: schluesselFeld
+                    anchors.fill: parent; anchors.margins: 14
+                    horizontalAlignment: TextInput.AlignHCenter; verticalAlignment: TextInput.AlignVCenter
+                    color: "#2a2008"; font.family: Theme.monoSchrift; font.pixelSize: 20; font.weight: Font.Bold; font.letterSpacing: 1.5
+                    font.capitalization: Font.AllUppercase; maximumLength: 60; clip: true
+                    Keys.onReturnPressed: pruefenKnopf.geklickt()
+                    Keys.onEscapePressed: tw.schluesselEingabe = false
+                    Text { anchors.centerIn: parent; visible: schluesselFeld.text === ""; text: "XXXX-XXXX-XXXX-XXXX-…"; color: "#5e4816"; font: schluesselFeld.font }
+                }
+            }
+            Row {
+                anchors.horizontalCenter: parent.horizontalCenter; spacing: 10
+                Knopf { id: pruefenKnopf; text: "Schlüssel prüfen"; gefuellt: true
+                        onGeklickt: { if (tw.vorschau.startsWith("tresor")) { tw.schluesselEingabe = false; return }
+                                      TresorDienst.befehl("notfall-eingeben", ["notfall-eingeben", tw.karte, schluesselFeld.text]); schluesselFeld.text = "" } }
+                Knopf { text: "Abbrechen"; art: "leise"; onGeklickt: { tw.schluesselEingabe = false; schluesselFeld.text = "" } }
+            }
         }
     }
 

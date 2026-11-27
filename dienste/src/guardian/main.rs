@@ -499,6 +499,7 @@ impl Guardian {
         )
         .knopf("beenden", "Beenden")
         .knopf("fortsetzen", "War ich – fortsetzen")
+        .knopf("tresor", "Im Tresor retten")
         .fuer(uid)
         .datum("programm", programm)
         .schluessel(format!("erpresser:{}", pid));

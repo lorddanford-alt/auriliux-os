@@ -277,7 +277,10 @@ Window {
                         gefuellt: index === 0
                         art: index === 0 ? (modelData.aktion === "beenden" ? "rot" : "gold") : "leise"
                         nachfrage: modelData.aktion === "zulassen" || modelData.aktion === "freigeben" || modelData.aktion === "fortsetzen" ? "Sicher? Nochmal" : ""
-                        onGeklickt: { kt.fertig = true; Waechter.befehl("aktion", ["aktion", kt.r.ereignis.id, modelData.aktion]) }
+                        onGeklickt: {
+                            if (modelData.aktion === "tresor") { System.starte("auriliux-shell", ["tresor", "rettung", String(kt.r.ereignis.zeit)]); return }
+                            kt.fertig = true; Waechter.befehl("aktion", ["aktion", kt.r.ereignis.id, modelData.aktion])
+                        }
                     }
                 }
                 Knopf {

@@ -4,7 +4,7 @@
 //   auriliux-shell guardian [abschnitt]       (Schutz-Zentrale: uebersicht, schutz, ereignisse, herzschlag …)
 //   auriliux-shell zentrale [abschnitt]       (Einstellungen: bildschirm, ton, wlan, bluetooth, tastatur, energie, benutzer, updates, ueber)
 //   auriliux-shell charakter [bereich]        (Charakter: Übersicht oder muskulatur, bildung, geld, beziehung)
-//   auriliux-shell tresor                     (Tresor: Schnappschüsse, Sicherung, Zurückholen – mit Drehcode)
+//   auriliux-shell tresor [versionen <pfad> | rettung <zeit-ms>]   (Tresor: Schnappschüsse, Sicherung, Zurückholen – mit Drehcode)
 //   auriliux-shell sperre                     (Bildschirmsperre – besser über /usr/libexec/auriliux/sperren)
 //   auriliux-shell sperrwache                 (unsichtbar: sperrt bei Leerlauf, vor dem Ruhezustand, auf Befehl)
 #include <QGuiApplication>
@@ -99,6 +99,8 @@ int main(int argc, char *argv[])
         if (start == QLatin1String("papierkorb")) start = Dateien().papierkorbOrdner();
         engine.setInitialProperties({{QStringLiteral("startPfad"), QFileInfo(start).absoluteFilePath()}});
     }
+    if (teil == QLatin1String("tresor") && argc > 3)
+        engine.setInitialProperties({{QStringLiteral("startModus"), QString::fromLocal8Bit(argv[2])}, {QStringLiteral("startWert"), QString::fromLocal8Bit(argv[3])}});
     if ((teil == QLatin1String("guardian") || teil == QLatin1String("zentrale") || teil == QLatin1String("charakter")) && argc > 2)
         engine.setInitialProperties({{QStringLiteral("startAbschnitt"), QString::fromLocal8Bit(argv[2])}});
     engine.loadFromModule(QStringLiteral("Auriliux"), ebenen.value(teil, fenster.value(teil)));
