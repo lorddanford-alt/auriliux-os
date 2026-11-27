@@ -97,8 +97,8 @@ done < /tmp/oc-pruefsummen
 for m in /mnt/sysroot/boot/efi /mnt/sysimage/boot/efi; do
     [ -d "$m/EFI" ] || continue
     printf 'Auriliux OS' > "$m/.contentDetails"
-    icns=$(ls /mnt/sysroot/ostree/deploy/*/deploy/*/usr/share/auriliux/auriliux.icns 2>/dev/null | head -1)
-    [ -n "$icns" ] && cp "$icns" "$m/.VolumeIcon.icns"
+    icns=( /mnt/sysroot/ostree/deploy/*/deploy/*/usr/share/auriliux/auriliux.icns )
+    [ "${#icns[@]}" -gt 0 ] && cp "${icns[0]}" "$m/.VolumeIcon.icns"
     echo "Startauswahl-Name gesetzt in $m"
 done
 # Protokolle ins installierte System (/var/log/auriliux-installation)
