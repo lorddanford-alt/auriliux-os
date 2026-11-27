@@ -37,7 +37,7 @@ Window {
     // ── Hilfen ──
     readonly property var de: Qt.locale("de_DE")
     function nf(x, s) { return Number(x).toLocaleString(de, "f", s === undefined ? 1 : s) }
-    function GB(b) { return nf(b / 1e9) + " GB" }
+    function gb(b) { return nf(b / 1e9) + " GB" }
     function groesse(b) { return b >= 1e9 ? nf(b / 1e9) + " GB" : Math.max(1, Math.round(b / 1e6)) + " MB" }
     function pct(x) { return Math.round(x * 100) + " %" }
     function tage(ms) { return Math.floor((Date.now() - ms) / 864e5) }
@@ -118,7 +118,7 @@ Window {
         }
         if (o) {
             if (o.uptime > 5 * 86400) add({ id: "uptime:" + Math.floor(o.uptime / 86400 / 5), sev: "info", cat: "Leistung", title: "Seit " + Math.floor(o.uptime / 86400) + " Tagen kein Neustart", text: "Ein Neustart ab und zu leert den Arbeitsspeicher und aktiviert geladene Updates.", abschnitt: "herzschlag", ack: true })
-            if (o.diskTotal > 0 && o.diskFree / o.diskTotal < 0.15) add({ id: "disk", sev: "hoch", cat: "Speicher", title: "Festplatte fast voll", text: "Nur noch " + GB(o.diskFree) + " frei. Schau unter „Speicher“ nach Platzfressern.", abschnitt: "speicher", keep: true })
+            if (o.diskTotal > 0 && o.diskFree / o.diskTotal < 0.15) add({ id: "disk", sev: "hoch", cat: "Speicher", title: "Festplatte fast voll", text: "Nur noch " + gb(o.diskFree) + " frei. Schau unter „Speicher“ nach Platzfressern.", abschnitt: "speicher", keep: true })
             const b = o.battery || {}
             if (b.health && b.health < 0.8) add({ id: "akku", sev: "info", cat: "Akku", title: "Akku hat noch " + pct(b.health) + " seiner Kapazität", text: "Nach " + b.cycles + " Ladezyklen. Ab etwa 80 % lohnt sich ein Austausch.", abschnitt: "herzschlag", ack: true })
         }
@@ -129,7 +129,7 @@ Window {
                 if (e.cpu >= 20) add({ id: "cpu:" + e.key, sev: e.cpu >= 50 ? "hoch" : "mittel", cat: "Leistung", title: n + " belastet den Prozessor (" + Math.round(e.cpu) + " %)",
                                        text: (e.count > 1 ? "Inklusive " + (e.count - 1) + " Hilfsprozessen. " : "") + "Beenden gibt sofort Leistung frei – ungespeicherte Arbeit darin kann verloren gehen.",
                                        yes: ["Ja, beenden", () => { Waechter.beenden(e.pids); melden(n + " wird beendet"); laden("prozesse") }], abschnitt: "herzschlag" })
-                else if (e.rss >= 1.2e9) add({ id: "mem:" + e.key, sev: "mittel", cat: "Leistung", title: n + " belegt " + GB(e.rss) + " Arbeitsspeicher", text: "Bei 8 GB ist das viel. Wenn du es gerade nicht brauchst: beenden.",
+                else if (e.rss >= 1.2e9) add({ id: "mem:" + e.key, sev: "mittel", cat: "Leistung", title: n + " belegt " + gb(e.rss) + " Arbeitsspeicher", text: "Bei 8 GB ist das viel. Wenn du es gerade nicht brauchst: beenden.",
                                               yes: ["Ja, beenden", () => { Waechter.beenden(e.pids); melden(n + " wird beendet"); laden("prozesse") }], abschnitt: "herzschlag" })
             }
         }
@@ -529,15 +529,15 @@ Window {
                     Kachel {
                         width: parent.kb
                         readonly property var o: gw.uebersicht || {}
-                        k: "Arbeitsspeicher"; v: o.ramUsed ? gw.GB(o.ramUsed) : ""
-                        s: o.ramTotal ? "von " + gw.GB(o.ramTotal) + " · ausgelagert " + gw.GB(o.swapUsed) : ""
+                        k: "Arbeitsspeicher"; v: o.ramUsed ? gw.gb(o.ramUsed) : ""
+                        s: o.ramTotal ? "von " + gw.gb(o.ramTotal) + " · ausgelagert " + gw.gb(o.swapUsed) : ""
                         anteil: o.ramTotal ? o.ramUsed / o.ramTotal : 0; farbe: gw.farbeFuer(anteil, 0.85, 0.95)
                     }
                     Kachel {
                         width: parent.kb
                         readonly property var o: gw.uebersicht || {}
-                        k: "Festplatte"; v: o.diskTotal ? gw.GB(o.diskFree) + " frei" : ""
-                        s: o.diskTotal ? "von " + gw.GB(o.diskTotal) : ""
+                        k: "Festplatte"; v: o.diskTotal ? gw.gb(o.diskFree) + " frei" : ""
+                        s: o.diskTotal ? "von " + gw.gb(o.diskTotal) : ""
                         anteil: o.diskTotal ? 1 - o.diskFree / o.diskTotal : 0; farbe: gw.farbeFuer(anteil, 0.8, 0.88)
                     }
                     Kachel {
@@ -702,7 +702,7 @@ Window {
                     Kachel {
                         width: parent.kb
                         k: "Arbeitsspeicher"; v: gw.pct(herzTeil.h.ram || 0)
-                        s: "ausgelagert (zram) " + gw.GB(herzTeil.h.swap || 0) + " · Druck " + gw.nf((herzTeil.h.druck || {}).speicher || 0) + " %"
+                        s: "ausgelagert (zram) " + gw.gb(herzTeil.h.swap || 0) + " · Druck " + gw.nf((herzTeil.h.druck || {}).speicher || 0) + " %"
                         anteil: herzTeil.h.ram || 0; farbe: gw.farbeFuer(anteil, 0.85, 0.95)
                     }
                     Kachel {
@@ -726,6 +726,7 @@ Window {
                 Repeater {
                     model: gw.prozesse ? gw.prozesse.slice(0, 25) : []
                     Zeile {
+                        id: pz
                         required property var modelData
                         readonly property bool schutz: gw.geschuetzt(modelData)
                         Column {
@@ -735,12 +736,12 @@ Window {
                         }
                         Item {
                             width: 110; height: 18; anchors.verticalCenter: parent.verticalCenter
-                            Abzeichen { text: parent.parent.schutz ? (modelData.system ? "System" : "geschützt") : modelData.kennung ? "Programm" : "Hintergrund"; farbe: parent.parent.schutz ? Theme.gruen : Theme.leise }
+                            Abzeichen { text: pz.schutz ? (pz.modelData.system ? "System" : "geschützt") : pz.modelData.kennung ? "Programm" : "Hintergrund"; farbe: pz.schutz ? Theme.gruen : Theme.leise }
                         }
                         Balken { b: 150; wert: modelData.cpu / 100; farbe: gw.farbeFuer(modelData.cpu / 100, 0.25, 0.5); text: gw.nf(modelData.cpu) + " %" }
                         Zahl { b: 90; text: gw.groesse(modelData.rss) }
                         Knopf {
-                            visible: !parent.schutz
+                            visible: !pz.schutz
                             text: "Beenden"; art: "rot"; nachfrage: "Beenden?"
                             onGeklickt: { Waechter.beenden(modelData.pids); gw.melden(gw.name(modelData) + " wird beendet"); gw.laden("prozesse") }
                         }
@@ -801,7 +802,7 @@ Window {
                     visible: !!gw.speicher
                     readonly property int n: Math.max(1, Math.floor((width + 12) / 202))
                     readonly property real kb: Math.floor((width - 12 * (n - 1)) / n)
-                    Kachel { width: parent.kb; k: "Festplatte"; v: gw.GB(parent.parent.s.frei || 0) + " frei"; s: "von " + gw.GB(parent.parent.s.gesamt || 0)
+                    Kachel { width: parent.kb; k: "Festplatte"; v: gw.gb(parent.parent.s.frei || 0) + " frei"; s: "von " + gw.gb(parent.parent.s.gesamt || 0)
                              anteil: parent.parent.s.gesamt ? 1 - parent.parent.s.frei / parent.parent.s.gesamt : 0; farbe: gw.farbeFuer(anteil, 0.8, 0.88) }
                     Kachel { width: parent.kb; k: "Große Downloads"; v: String((parent.parent.s.downloads || []).length); s: "ab 50 MB" }
                     Kachel { width: parent.kb; k: "Zwischenspeicher"; v: gw.groesse(parent.parent.s.cache || 0); s: "~/.cache – Programme legen ihn neu an" }
