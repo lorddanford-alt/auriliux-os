@@ -89,9 +89,11 @@ COPY --from=intro /ausgabe/ /
 # ── Boot-Intro ins initramfs (dort läuft Plymouth und fragt ggf. nach dem Festplatten-Passwort) ──
 # Danach Gegenprobe: alle bisherigen dracut-Teile sind noch da, und das Thema ist drin.
 RUN kver="$(ls /usr/lib/modules | head -1)" && img="/usr/lib/modules/$kver/initramfs.img" \
-    && lsinitrd --mod "$img" | sort > /tmp/vorher \
+    && ls -la "$img" \
+    && lsinitrd --mod "$img" | grep -E '^[A-Za-z0-9_-]+$' | sort > /tmp/vorher \
     && dracut --force --no-hostonly --reproducible --kver "$kver" "$img" \
-    && lsinitrd --mod "$img" | sort > /tmp/nachher \
+    && lsinitrd --mod "$img" | grep -E '^[A-Za-z0-9_-]+$' | sort > /tmp/nachher \
+    && echo "dracut-Teile vorher $(wc -l < /tmp/vorher), nachher $(wc -l < /tmp/nachher): $(comm -13 /tmp/vorher /tmp/nachher | tr '\n' ' ')" \
     && if comm -23 /tmp/vorher /tmp/nachher | grep -q .; then echo "FEHLER: dracut-Teile fehlen:"; comm -23 /tmp/vorher /tmp/nachher; exit 1; fi \
     && lsinitrd "$img" | grep -q "plymouth/themes/auriliux/auriliux.script" \
     && grep -q "plymouth" /tmp/nachher \
