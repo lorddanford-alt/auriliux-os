@@ -1,0 +1,12 @@
+#!/bin/sh
+# Boot-Intro fertig laufen lassen – höchstens bis „dauer“ Sekunden nach dem Einschalten (steht im Thema) –,
+# dann Plymouth beenden. Das letzte Bild bleibt stehen, bis der goldene Login erscheint.
+if plymouth --ping 2>/dev/null; then
+    ende=$(cat /usr/share/plymouth/themes/auriliux/dauer 2>/dev/null)
+    auf=$(cut -d. -f1 /proc/uptime)
+    case "$ende" in ''|*[!0-9]*) ende=0 ;; esac
+    if [ "$auf" -lt "$ende" ] && [ "$ende" -lt 30 ]; then
+        sleep $((ende - auf))
+    fi
+fi
+exec plymouth quit --retain-splash

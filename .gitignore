@@ -3,3 +3,5 @@ output/
 *.iso
 vorschau/
 dienste/target/
+image/intro-roh/*
+!image/intro-roh/.gitkeep

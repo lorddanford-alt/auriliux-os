@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Auriliux</title>
+  <!-- Gestaltung, Logo, Geräusche und Animation: 1:1 aus der Auriliux-Webseite (Startbildschirm) -->
+  <link rel="stylesheet" href="intro.css">
+  <style>html, body, * { cursor: default; } body { user-select: none; }</style>
+</head>
+<body>
+
+  <!-- Startbildschirm (wie auf der Webseite) -->
+  <section id="intro" class="screen active" aria-label="Startbildschirm">
+    <div class="intro-inner">
+      <div class="logo-stage" id="logoStage" role="img" aria-label="Logo"></div>
+      <div class="start-btn" id="startBtn"><span>Start</span></div>
+    </div>
+  </section>
+
+  <canvas id="embers" aria-hidden="true"></canvas>
+
+  <script src="defaults.js"></script>
+  <script src="intro.js"></script>
+</body>
+</html>

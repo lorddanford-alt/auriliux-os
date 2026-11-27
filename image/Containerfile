@@ -20,6 +20,16 @@ RUN cmake -S /quelle/shell -B /bauordner -G Ninja -DCMAKE_BUILD_TYPE=Release -DC
     && cmake --build /bauordner \
     && DESTDIR=/ausgabe cmake --install /bauordner
 
+# ── Stufe 1b: Boot-Intro (Plymouth-Thema) aus der Aufnahme des Laser-Intros bauen ──
+# Die Aufnahme macht der Cloud-Bau vorher mit Chrome (werkzeuge/intro-aufnehmen.mjs); fehlt sie,
+# entsteht ein ruhiges Thema mit dem fertigen Logo.
+FROM quay.io/fedora/fedora:45 AS intro
+RUN dnf -y install --setopt=install_weak_deps=False python3-pillow google-noto-sans-mono-fonts && dnf clean all
+COPY werkzeuge/intro-thema.py /intro/intro-thema.py
+COPY image/intro-roh /intro/roh
+COPY image/files/usr/share/auriliux/logo.png /intro/logo.png
+RUN python3 /intro/intro-thema.py /intro/roh /intro/logo.png /ausgabe/usr/share/plymouth/themes/auriliux
+
 # ── Stufe 2: das eigentliche System ───────────────────────────────────────────
 # Basis: Fedora 45 bootc (unveränderliches System, Updates als ganzes Abbild, Rückweg zum vorherigen Stand)
 FROM quay.io/fedora/fedora-bootc:45
@@ -74,6 +84,18 @@ RUN KVER="$(ls /usr/lib/modules | head -1)" \
 # ── Auriliux-Dateien (Design, Dienste, Einstellungen) ─────────────────────────
 COPY image/files/ /
 COPY --from=bau /ausgabe/ /
+COPY --from=intro /ausgabe/ /
+
+# ── Boot-Intro ins initramfs (dort läuft Plymouth und fragt ggf. nach dem Festplatten-Passwort) ──
+# Danach Gegenprobe: alle bisherigen dracut-Teile sind noch da, und das Thema ist drin.
+RUN kver="$(ls /usr/lib/modules | head -1)" && img="/usr/lib/modules/$kver/initramfs.img" \
+    && lsinitrd --mod "$img" | sort > /tmp/vorher \
+    && dracut --force --no-hostonly --reproducible --kver "$kver" "$img" \
+    && lsinitrd --mod "$img" | sort > /tmp/nachher \
+    && if comm -23 /tmp/vorher /tmp/nachher | grep -q .; then echo "FEHLER: dracut-Teile fehlen:"; comm -23 /tmp/vorher /tmp/nachher; exit 1; fi \
+    && lsinitrd "$img" | grep -q "plymouth/themes/auriliux/auriliux.script" \
+    && grep -q "plymouth" /tmp/nachher \
+    && ls -la "$img" && rm -f /tmp/vorher /tmp/nachher
 
 # ── Schrift Cinzel (Titel wie auf der Auriliux-Webseite, SIL Open Font License), fest auf eine Version gepinnt ──
 RUN mkdir -p /usr/share/fonts/auriliux \

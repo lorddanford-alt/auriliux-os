@@ -55,6 +55,15 @@ jobs:
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
           df -h /
 
+      - name: Laser-Intro aufnehmen (Boot-Intro)
+        continue-on-error: true
+        run: |
+          (cd werkzeuge/intro && python3 -m http.server 8765 > /dev/null 2>&1 &)
+          sleep 1
+          if node -e "process.exit(typeof WebSocket === 'function' ? 0 : 1)"; then N="node"; else N="node --experimental-websocket"; fi
+          timeout 420 $N werkzeuge/intro-aufnehmen.mjs http://127.0.0.1:8765/index.html image/intro-roh
+          du -sh image/intro-roh
+
       - name: Abbild bauen
         run: |
           TAG=$(date -u +%Y%m%d)

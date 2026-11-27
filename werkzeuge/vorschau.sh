@@ -123,6 +123,17 @@ HOME=$H AURILIUX_VORSCHAU=tresor-oeffnet auriliux-shell tresor > /aus/tresor-oef
 sleep 3; grim /aus/tresor-oeffnet-1.png; sleep 1.6; grim /aus/tresor-oeffnet-2.png; kill $P; sleep 1
 n=30; for t in tresor tresor-neu tresor-fehler tresor-oeffnet-1 tresor-oeffnet-2 tresor-offen tresor-versionen tresor-rettung; do mv /aus/$t.png /aus/$n-$t.png; n=$((n+1)); done
 /usr/libexec/auriliux/auriliux-tresor --einmal > /aus/tresor-status.json 2> /aus/tresor-dienst.log
+# Boot-Intro: Thema, Einstellungen, initramfs (Bilder zum Ansehen in /aus)
+{
+  T=/usr/share/plymouth/themes/auriliux
+  ls $T | wc -l; cat $T/dauer; echo; cat /etc/plymouth/plymouthd.conf; cat /usr/lib/bootc/kargs.d/10-auriliux.toml
+  grep -c "global.folge" $T/auriliux.script
+  k=$(ls /usr/lib/modules | head -1); ls -la /usr/lib/modules/$k/initramfs.img
+  lsinitrd /usr/lib/modules/$k/initramfs.img | grep -c "themes/auriliux"
+  sh -n /usr/libexec/auriliux/intro-abwarten && echo "intro-abwarten ok"
+} > /aus/boot-intro.log 2>&1
+n=0; for f in $(grep -o "global.folge\[[0-9]*\] = [0-9]*" /usr/share/plymouth/themes/auriliux/auriliux.script | awk 'NR % 25 == 1 { print $3 }'); do
+  cp /usr/share/plymouth/themes/auriliux/intro-$f.png /aus/boot-intro-$n.png 2>/dev/null; n=$((n+1)); done
 # Sperrwache kurz laufen lassen (ohne logind im Bau-Behälter: darf nur melden, nicht abstürzen)
 auriliux-shell sperrwache > /aus/sperrwache.log 2>&1 & P=$!
 sleep 3; kill -0 $P 2>/dev/null && echo "sperrwache läuft" >> /aus/sperrwache.log || echo "sperrwache beendet" >> /aus/sperrwache.log

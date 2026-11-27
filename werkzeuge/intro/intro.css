@@ -1,0 +1,133 @@
+/* ==========================================================================
+   Auriliux – Gestaltung
+   ========================================================================== */
+
+:root {
+  --stage-h: clamp(200px, 34vh, 340px);   /* Höhe von James' Bühne unten */
+  --gold: #d4a640;
+  --gold-light: #f6dc8c;
+  --gold-dark: #7d5a1c;
+  --text: #eadfc6;
+  --muted: #a59578;
+  --bg: #050403;
+  --line: color-mix(in srgb, var(--gold) 28%, transparent);
+  --display: 'Cinzel', 'Trajan Pro', 'Times New Roman', serif;
+  --serif: 'Cormorant Garamond', Georgia, serif;
+  --ui: system-ui, 'Segoe UI', Roboto, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--serif);
+  font-size: 19px;
+  line-height: 1.6;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; }
+::selection { background: color-mix(in srgb, var(--gold) 45%, transparent); color: #fff; }
+
+#embers { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+
+.screen {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  display: none;
+  background: #000;
+}
+.screen.active { display: block; }
+
+/* ---------- Startbildschirm ---------- */
+
+/* Startbildschirm: rein schwarz, nur das Logo */
+#intro { --ratio: 1.5; overflow: hidden; }
+#intro.active { display: grid; place-items: center; }
+#intro.leaving { animation: introOut .75s cubic-bezier(.5, 0, .7, .4) forwards; }
+@keyframes introOut { to { opacity: 0; transform: scale(1.12); filter: blur(6px); } }
+
+.intro-inner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  padding: 16px;
+}
+
+.logo-stage {
+  --split: 68%;
+  position: relative;
+  width: min(92vw, 880px, calc(64vh * var(--ratio)));
+  aspect-ratio: var(--ratio);
+}
+.logo-stage .layer { position: absolute; inset: 0; mix-blend-mode: screen; pointer-events: none; }
+.logo-stage img { display: block; user-select: none; -webkit-user-drag: none; pointer-events: none; }
+.logo-stage .layer img { width: 100%; height: 100%; object-fit: contain; }
+.layer.full, .layer.glow { opacity: 0; }
+.layer.glow img { filter: blur(22px) saturate(1.4); }
+.logo-stage .cut { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+
+.logo-stage.assembled .full { opacity: 1; }
+.logo-stage.assembled .cut { display: none; }
+.logo-stage.assembled .glow { animation: breathe 4.5s ease-in-out infinite; }
+@keyframes breathe { 0%, 100% { opacity: .22; } 50% { opacity: .55; } }
+
+.flash {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--split) / 2);
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  width: 70%;
+  background: radial-gradient(circle, rgba(255, 246, 214, .95) 0, color-mix(in srgb, var(--gold-light) 55%, transparent) 22%, transparent 65%);
+}
+.shine {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  opacity: 0;
+  background: linear-gradient(105deg, transparent 43%, rgba(255, 246, 214, .9) 50%, transparent 57%) no-repeat;
+  background-size: 300% 100%;
+  background-position: 100% 0;
+}
+
+/* Start: kleiner silberner Schriftzug direkt unter dem Logo, ohne Rahmen.
+   Der negative Abstand zieht ihn in den leeren Rand unter dem Schriftzug des Logos. */
+.start-btn {
+  margin-top: calc(min(92vw / var(--ratio), 880px / var(--ratio), 64vh) * -0.06);
+  padding: 8px 4px 8px calc(4px + .6em);
+  cursor: pointer;
+  user-select: none;
+  outline: none;
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: clamp(12px, 1.15vw, 15px);
+  letter-spacing: .6em;
+  text-transform: uppercase;
+  color: transparent;
+  background: linear-gradient(180deg, #ffffff 0%, #d9dde3 45%, #9aa1aa 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  caret-color: #d9dde3;
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+  transition: opacity 1.1s ease, transform 1.1s cubic-bezier(.2, .8, .2, 1), filter .35s ease;
+}
+#intro.ready .start-btn {
+  opacity: .85;
+  transform: none;
+  pointer-events: auto;
+}
+
+/* Schreibtisch: der Start-Schriftzug bleibt unsichtbar (nur Platzhalter, damit das Logo genau wie auf der Webseite sitzt) */
+.start-btn, #intro.ready .start-btn { visibility: hidden; }
