@@ -89,7 +89,7 @@ Window {
         } else {
             pruefe = true
             if (modus === "neu2") {
-                if (vorschau.startsWith("tresor")) TresorDienst.antwort("code-neu", { ok: true, karte: "vorschau", notfall: "K7QM-3XRA-9VTE-HN2D-W5PJ-C8YF-B4ZS-6GMR" })
+                if (vorschau.startsWith("tresor")) verarbeiten("code-neu", { ok: true, karte: "vorschau", notfall: "K7QM-3XRA-9VTE-HN2D-W5PJ-C8YF-B4ZS-6GMR" })
                 else TresorDienst.befehl("code-neu", ["code-neu", code])
             } else TresorDienst.befehl("code-aendern", ["code-aendern", karte, code])
         }
@@ -97,7 +97,7 @@ Window {
     function fehler(t) { fehlerAnzeige = true; hinweis = t; zahlen = []; wackeln.restart() }
     Timer {
         id: vorschauPruefung; interval: 700; property string code: ""
-        onTriggered: TresorDienst.antwort("oeffnen", code === "12-34-56" ? { ok: true, karte: "vorschau" } : { ok: false, fehler: "Falscher Code – noch 4 Versuche bis zur Sperre." })
+        onTriggered: tw.verarbeiten("oeffnen", code === "12-34-56" ? { ok: true, karte: "vorschau" } : { ok: false, fehler: "Falscher Code – noch 4 Versuche bis zur Sperre." })
     }
 
     // ════════ Tür ════════
@@ -161,9 +161,10 @@ Window {
         TresorDienst.befehl("zurueckholen", ["zurueckholen", karte, fach.quelle, fach.id, p])
     }
 
-    Connections {
-        target: TresorDienst
-        function onAntwort(kennung, d) {
+    Connections { target: TresorDienst; function onAntwort(kennung, d) { tw.verarbeiten(kennung, d) } }
+    QtObject {
+        id: antworten
+        function verarbeiten(kennung, d) {
             if (!d.ok && String(d.fehler || "").indexOf("verschlossen") >= 0 && tw.phase === "innen") { tw.melden("Zeit abgelaufen – der Tresor hat sich geschlossen", true); tw.tuerSchliessen(); return }
             if (kennung === "oeffnen") {
                 tw.pruefe = false
@@ -192,12 +193,13 @@ Window {
         }
     }
     property string zuletztZurueck: ""
+    function verarbeiten(kennung, d) { antworten.verarbeiten(kennung, d) }
 
     Component.onCompleted: {
         if (vorschau === "tresor-neu") { modus = "neu"; zahlen = [27, 8] }
         else if (!codeGesetzt && TresorDienst.da) modus = "neu"
         if (vorschau === "tresor-fehler") Qt.callLater(() => { zahlen = [12, 33]; einrasten(70) })
-        if (vorschau === "tresor-offen") { karte = "vorschau"; phase = "innen"; listeLaden(); Qt.callLater(() => fachOeffnen(eintraege[1])) }
+        if (vorschau === "tresor-offen") { karte = "vorschau"; phase = "innen"; innen.opacity = 1; innen.scale = 1; listeLaden(); Qt.callLater(() => fachOeffnen(eintraege[1])) }
         if (vorschau === "tresor-oeffnet") Qt.callLater(() => { zahlen = [12, 34]; einrasten(56) })
         tastatur.forceActiveFocus()
     }
@@ -605,13 +607,13 @@ Window {
 
         Item {
             id: tuer
-            readonly property real d: Math.min(tw.height - 150, tw.width * 0.62)
+            readonly property real d: Math.min(tw.height - 230, tw.width * 0.6)
             property real riegel: 1                // 1 = Riegel draußen (verschlossen), 0 = eingefahren
             property alias schloss: drehschloss
             property alias rad: ventil
             width: d; height: d
             anchors.horizontalCenter: parent.horizontalCenter
-            y: (tw.height - height) / 2 - 18
+            y: 52
             transform: Rotation { id: schwung; origin.x: 0; origin.y: tuer.height / 2; axis { x: 0; y: 1; z: 0 } angle: 0 }
 
             // Riegel rundherum
@@ -702,7 +704,7 @@ Window {
             }
             Text {
                 anchors.horizontalCenter: drehschloss.horizontalCenter; y: drehschloss.y + drehschloss.height + 10
-                text: tw.zahlen.length < 3 && !tw.pruefe ? (tw.zahlen.length % 2 === 0 ? "↻  RECHTS" : "↺  LINKS") : ""
+                text: tw.zahlen.length < 3 && !tw.pruefe ? (tw.zahlen.length % 2 === 0 ? "RECHTS DREHEN  →" : "←  LINKS DREHEN") : ""
                 color: Theme.leise; font.family: Theme.monoSchrift; font.pixelSize: 10; font.letterSpacing: 2
             }
         }
@@ -724,14 +726,14 @@ Window {
             }
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: "Ziehen im Kreis · Mausrad · Pfeiltasten (mit ⇧ in Zehnern) · Enter rastet ein · ⌫ nimmt zurück"
+                text: "Ziehen im Kreis · Mausrad · Pfeiltasten (mit Umschalt in Zehnern) · Enter rastet ein · Rücktaste nimmt zurück"
                 color: Theme.leise; font.family: Theme.monoSchrift; font.pixelSize: 10; font.letterSpacing: 0.8
             }
         }
         // erste Einrichtung: kurze Erklärung links oben
         Column {
             visible: tw.modus === "neu" || tw.modus === "neu2"
-            x: 34; y: 30; width: 300; spacing: 8
+            x: 34; y: 30; width: Math.min(300, rahmen.x - 60); spacing: 8
             Text { text: "DEIN TRESOR"; color: Theme.akzent; font.family: Theme.monoSchrift; font.pixelSize: 12; font.weight: Font.Bold; font.letterSpacing: 3 }
             Text { width: parent.width; wrapMode: Text.WordWrap; color: Theme.text; font.family: Theme.schrift; font.pixelSize: 13; lineHeight: 1.2
                    text: "Wähle drei Zahlen als Code – wie bei einem echten Tresor. Ohne diesen Code kommt niemand an deine alten Stände, auch nicht mit deinem entsperrten Mac." }
