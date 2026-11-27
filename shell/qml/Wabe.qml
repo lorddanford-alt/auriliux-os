@@ -36,8 +36,16 @@ Canvas {
     }
     onWidthChanged: requestPaint()
     onHeightChanged: requestPaint()
-    onBildChanged: if (bild !== "") loadImage(bild); else requestPaint()
-    onImageLoaded: requestPaint()
+    onBildChanged: requestPaint()
+    // Foto über ein echtes Bild-Element laden (Canvas.loadImage kann keine Hintergrund-Bildquellen)
+    Image {
+        id: foto
+        visible: false
+        source: w.bild
+        asynchronous: true
+        sourceSize: Qt.size(160, 160)
+        onStatusChanged: if (status === Image.Ready) w.requestPaint()
+    }
 
     function sechseck(g, x, y, b, h) {
         g.beginPath()
@@ -60,10 +68,13 @@ Canvas {
         // Inneres
         const r = rand
         sechseck(g, r, r, b - 2 * r, h - 2 * r)
-        if (bild !== "" && isImageLoaded(bild)) {
+        if (bild !== "" && foto.status === Image.Ready && foto.implicitWidth > 0) {
             g.save(); g.clip()
             g.fillStyle = "#0d0a04"; g.fillRect(0, 0, b, h)
-            g.drawImage(bild, r, r, b - 2 * r, h - 2 * r)
+            // ausfüllen ohne Verzerren (wie object-fit: cover)
+            const zb = b - 2 * r, zh = h - 2 * r, qb = foto.implicitWidth, qh = foto.implicitHeight
+            const f = Math.max(zb / qb, zh / qh), sb = zb / f, sh = zh / f
+            g.drawImage(foto, (qb - sb) / 2, (qh - sh) / 2, sb, sh, r, r, zb, zh)
             g.restore()
         } else {
             const k = g.createRadialGradient(b / 2, h * f.m, 0, b / 2, h * f.m, Math.max(b, h) * 0.72)
