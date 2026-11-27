@@ -25,7 +25,7 @@ set(AURILIUX_QML
     qml/KiStern.qml qml/AppSuche.qml qml/DockKreis.qml qml/Golddock.qml
     qml/Wabe.qml qml/WabenSymbol.qml qml/WabenHintergrund.qml qml/Wabenfinder.qml
     qml/Schreibtisch.qml qml/Aufgaben.qml
-    qml/Fase.qml qml/Knopf.qml qml/Herz.qml qml/Guardian.qml qml/GuardianKarte.qml qml/Goldtor.qml qml/Anmeldebildschirm.qml qml/Sperrbildschirm.qml qml/Zentrale.qml)
+    qml/Fase.qml qml/Knopf.qml qml/Herz.qml qml/Guardian.qml qml/GuardianKarte.qml qml/Goldtor.qml qml/Anmeldebildschirm.qml qml/Sperrbildschirm.qml qml/Zentrale.qml qml/Charakter.qml)
 set_source_files_properties(qml/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 # Dateien liegen im Ordner qml/, sollen im Modul aber direkt neben qmldir liegen – sonst sehen sie
 # die eigenen Typen (Theme, System, Ebene) nicht
@@ -37,7 +37,7 @@ qt_add_qml_module(auriliux-shell
     URI Auriliux
     VERSION 1.0
     SOURCES src/system.h src/system.cpp src/ebene.h src/ebene.cpp src/fenster.h src/fenster.cpp src/programme.h src/programme.cpp src/dateien.h src/dateien.cpp src/geraete.h src/geraete.cpp src/waechter.h src/waechter.cpp src/anmeldung.h src/anmeldung.cpp
-            src/sperre.h src/sperre.cpp src/sperrwache.h src/sperrwache.cpp src/steuerung.h src/steuerung.cpp
+            src/sperre.h src/sperre.cpp src/sperrwache.h src/sperrwache.cpp src/steuerung.h src/steuerung.cpp src/charakterspeicher.h src/charakterspeicher.cpp
     QML_FILES ${AURILIUX_QML}
 )
 

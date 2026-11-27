@@ -47,7 +47,7 @@ RUN dnf -y install --setopt=install_weak_deps=False \
         snapper btrfs-progs zram-generator \
         lm_sensors brightnessctl \
         google-chrome-stable \
-        google-noto-sans-fonts google-noto-sans-mono-fonts adwaita-icon-theme \
+        google-noto-sans-fonts google-noto-sans-mono-fonts google-noto-color-emoji-fonts adwaita-icon-theme \
         git curl unzip cpio xdg-utils xdg-user-dirs glibc-langpack-de \
     && dnf clean all
 

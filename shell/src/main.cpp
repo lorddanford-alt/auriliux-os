@@ -3,6 +3,7 @@
 //   auriliux-shell wabenfinder [ordner]       (normales Fenster)
 //   auriliux-shell guardian [abschnitt]       (Schutz-Zentrale: uebersicht, schutz, ereignisse, herzschlag …)
 //   auriliux-shell zentrale [abschnitt]       (Einstellungen: bildschirm, ton, wlan, bluetooth, tastatur, energie, benutzer, updates, ueber)
+//   auriliux-shell charakter [bereich]        (Charakter: Übersicht oder muskulatur, bildung, geld, beziehung)
 //   auriliux-shell sperre                     (Bildschirmsperre – besser über /usr/libexec/auriliux/sperren)
 //   auriliux-shell sperrwache                 (unsichtbar: sperrt bei Leerlauf, vor dem Ruhezustand, auf Befehl)
 #include <QGuiApplication>
@@ -15,6 +16,7 @@
 #include "programme.h"
 #include "dateien.h"
 #include "sperrwache.h"
+#include "charakterspeicher.h"
 #include <QScreen>
 #include <QPointer>
 
@@ -30,11 +32,12 @@ int main(int argc, char *argv[])
         {QStringLiteral("wabenfinder"), QStringLiteral("Wabenfinder")},
         {QStringLiteral("guardian"), QStringLiteral("Guardian")},
         {QStringLiteral("zentrale"), QStringLiteral("Zentrale")},
+        {QStringLiteral("charakter"), QStringLiteral("Charakter")},
     };
     const QString teil = argc > 1 ? QString::fromLocal8Bit(argv[1]).toLower() : QStringLiteral("goldleiste");
     const bool sperre = teil == QLatin1String("sperre"), wache = teil == QLatin1String("sperrwache");
     if (!ebenen.contains(teil) && !fenster.contains(teil) && !sperre && !wache) {
-        fprintf(stderr, "Unbekannter Teil: %s (bekannt: goldleiste, golddock, schreibtisch, anmeldung, wabenfinder, guardian, zentrale, sperre, sperrwache)\n", qPrintable(teil));
+        fprintf(stderr, "Unbekannter Teil: %s (bekannt: goldleiste, golddock, schreibtisch, anmeldung, wabenfinder, guardian, zentrale, charakter, sperre, sperrwache)\n", qPrintable(teil));
         return 2;
     }
 
@@ -67,6 +70,7 @@ int main(int argc, char *argv[])
     engine.addImageProvider(QStringLiteral("symbol"), new SymbolBild);
     engine.addImageProvider(QStringLiteral("vorschau"), new VorschauBild);
     engine.addImageProvider(QStringLiteral("wabe"), new WabenBild);
+    engine.addImageProvider(QStringLiteral("raute"), new RautenBild);
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed, &app,
                      [] { QCoreApplication::exit(1); }, Qt::QueuedConnection);
 
@@ -93,7 +97,7 @@ int main(int argc, char *argv[])
         if (start == QLatin1String("papierkorb")) start = Dateien().papierkorbOrdner();
         engine.setInitialProperties({{QStringLiteral("startPfad"), QFileInfo(start).absoluteFilePath()}});
     }
-    if ((teil == QLatin1String("guardian") || teil == QLatin1String("zentrale")) && argc > 2)
+    if ((teil == QLatin1String("guardian") || teil == QLatin1String("zentrale") || teil == QLatin1String("charakter")) && argc > 2)
         engine.setInitialProperties({{QStringLiteral("startAbschnitt"), QString::fromLocal8Bit(argv[2])}});
     engine.loadFromModule(QStringLiteral("Auriliux"), ebenen.value(teil, fenster.value(teil)));
     if (teil == QLatin1String("schreibtisch") && !engine.rootObjects().isEmpty()) {

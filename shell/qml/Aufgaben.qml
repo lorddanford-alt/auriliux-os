@@ -1075,7 +1075,7 @@ Window {
                 tc: Theme.violett
                 symbol: "charakter"; beschriftung: "CHARAKTER"; schriftGroesse: 6
                 onGeklickt: {
-                    if (!System.starte("auriliux-charakter")) af.melden("Charakter kommt als Nächstes", af.schiene + 10, unten.y + y)
+                    if (!System.starte("auriliux-shell", ["charakter"])) af.melden("Charakter ließ sich nicht starten", af.schiene + 10, unten.y + y)
                 }
             }
             HexTaste {

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Charakter
+Comment=Fähigkeiten in Muskulatur, Bildung, Geld und Beziehung
+Exec=auriliux-shell charakter
+Icon=charakter
+Categories=Utility;
+StartupWMClass=charakter

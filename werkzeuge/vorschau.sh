@@ -92,6 +92,28 @@ for t in bildschirm ton wlan energie updates ueber; do
 done
 n=21; for t in bildschirm ton wlan energie updates ueber; do mv /aus/zentrale-$t.png /aus/$n-zentrale-$t.png; n=$((n+1)); done
 sh -n /usr/libexec/auriliux/update && echo "update-Skript ok" >> /aus/zentrale-ueber.log
+# Charakter: Beispiel-Fähigkeiten (eine mit Bild = Auriliux-Logo), Übersicht, Baum, Baum mit Bearbeiten-Leiste
+mkdir -p "$H/.local/share/auriliux"
+B="data:image/png;base64,$(base64 -w0 /usr/share/auriliux/logo.png)"
+k() { printf '{"id":"%s","name":"%s","symbol":"%s","bild":%s,"x":%s,"y":%s,"eltern":%s,"status":"%s","notiz":""}' "$@"; }
+w() { k wurzel "$1" "$2" null 0 0 null gemeistert; }
+{
+printf '{"version":1,"werte":{"muskulatur":0,"bildung":0,"geld":0,"beziehung":0},"baeume":{'
+printf '"muskulatur":{"knoten":[%s,%s,%s]},' "$(w Muskulatur 💪)" "$(k m1 Liegestütze 🏋️ null 0 -1 '"wurzel"' gemeistert)" "$(k m2 Laufen 🏃 null 1 0 '"wurzel"' arbeit)"
+printf '"bildung":{"knoten":[%s,%s,%s,%s,%s,%s,%s,%s]},' "$(w Bildung 📚)" \
+  "$(k b1 Programmieren 💻 null 0 -1 '"wurzel"' gemeistert)" "$(k b2 'Qt und QML' 🧩 null -1 -2 '"b1"' gemeistert)" \
+  "$(k b3 Rust 🦀 null 1 -2 '"b1"' arbeit)" "$(k b4 Englisch 🗣️ null -1.5 0.5 '"wurzel"' arbeit)" \
+  "$(k b5 'Auriliux OS' ⭐ "\"$B\"" 0 -3 '"b2"' gemeistert)" "$(k b6 Mathematik 🧠 null 1.5 0.5 '"wurzel"' offen)" \
+  "$(k b7 Statistik 📈 null 2.5 1 '"b6"' offen)"
+printf '"geld":{"knoten":[%s,%s]},' "$(w Geld 💰)" "$(k g1 Budget 🧾 null 0 -1 '"wurzel"' gemeistert)"
+printf '"beziehung":{"knoten":[%s]}}}' "$(w Beziehung ❤️)"
+} > "$H/.local/share/auriliux/charakter.json"
+HOME=$H AURILIUX_VORSCHAU=charakter auriliux-shell charakter > /aus/charakter.log 2>&1 & P=$!
+sleep 6; grim /aus/27-charakter.png; kill $P; sleep 1
+HOME=$H AURILIUX_VORSCHAU=charakter auriliux-shell charakter bildung > /aus/charakter-baum.log 2>&1 & P=$!
+sleep 6; grim /aus/28-charakter-baum.png; kill $P; sleep 1
+HOME=$H AURILIUX_VORSCHAU=charakter-editor auriliux-shell charakter bildung > /aus/charakter-editor.log 2>&1 & P=$!
+sleep 6; grim /aus/29-charakter-editor.png; kill $P; sleep 1
 # Sperrwache kurz laufen lassen (ohne logind im Bau-Behälter: darf nur melden, nicht abstürzen)
 auriliux-shell sperrwache > /aus/sperrwache.log 2>&1 & P=$!
 sleep 3; kill -0 $P 2>/dev/null && echo "sperrwache läuft" >> /aus/sperrwache.log || echo "sperrwache beendet" >> /aus/sperrwache.log
@@ -109,5 +131,5 @@ sleep 1; grim /aus/20-entsperrt.png 2>> /aus/sperre.log
 labwc --exit
 INNEN
 chmod +x /tmp/innen.sh
-timeout 400 labwc -C /tmp/leer -s /tmp/innen.sh > /aus/labwc.log 2>&1
+timeout 440 labwc -C /tmp/leer -s /tmp/innen.sh > /aus/labwc.log 2>&1
 ls -la /aus
