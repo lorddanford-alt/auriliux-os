@@ -159,7 +159,8 @@ RUN sed -i 's/^PRETTY_NAME=.*/PRETTY_NAME="Auriliux OS (Fedora 45)"/' /usr/lib/o
     && firewall-offline-cmd --set-default-zone=drop \
     && firewall-offline-cmd --zone=drop --add-protocol=ipv6-icmp \
     && firewall-offline-cmd --zone=drop --add-service=dhcpv6-client \
-    && { getent passwd greeter || { echo "FEHLER: Benutzer „greeter“ für greetd fehlt"; exit 1; }; } \
+    && { getent passwd greetd || grep -q "^u *greetd " /usr/lib/sysusers.d/greetd.conf || { echo "FEHLER: Benutzer greetd für die Anmeldung fehlt"; exit 1; }; } \
+    && grep -q '^user = "greetd"' /etc/greetd/config.toml \
     && systemctl set-default graphical.target
 
 # USBGuard wird bewusst NICHT hier eingeschaltet: ohne Regeln würde es auch die eingebaute Tastatur und das
