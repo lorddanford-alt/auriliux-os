@@ -139,6 +139,19 @@ jobs:
             --type anaconda-iso --rootfs btrfs "$IMAGE:latest"
           sudo find output -name '*.iso' -exec ls -la {} \;
 
+      - name: Installer-ISO prüfen (sichere Anweisungen drin, nichts wird gelöscht)
+        run: |
+          ISO=$(sudo find output -name '*.iso' | head -1)
+          sudo mkdir -p /mnt/iso && sudo mount -o loop,ro "$ISO" /mnt/iso
+          ls /mnt/iso
+          sudo cat /mnt/iso/osbuild.ks /mnt/iso/osbuild-base.ks > /tmp/iso-ks.txt
+          grep -q 'AURILIUX_PLATTENTYP' /tmp/iso-ks.txt || { echo "FEHLER: Auriliux-Installer-Anweisungen fehlen im ISO"; exit 1; }
+          grep -q 'bootloader --leavebootorder' /tmp/iso-ks.txt || { echo "FEHLER: Startreihenfolge nicht geschützt"; exit 1; }
+          if grep -Eq '^(clearpart|zerombr|autopart)' /tmp/iso-ks.txt; then echo "FEHLER: ISO würde Partitionen löschen"; exit 1; fi
+          grep -n '^ostreecontainer\|^%include\|^bootloader\|^lang\|^keyboard' /tmp/iso-ks.txt
+          sudo umount /mnt/iso
+          echo "ISO geprüft: nur freier Platz, OpenCore und Startreihenfolge bleiben"
+
       - name: Als Release ablegen (in 1,9-GB-Teilen)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -147,7 +160,8 @@ jobs:
           TAG=installer-$(date -u +%Y%m%d-%H%M)
           mkdir teile
           sudo split -b 1900M -d "$ISO" teile/auriliux-os.iso.teil
-          (cd teile && sha256sum auriliux-os.iso.teil* > pruefsummen.txt && sudo sha256sum "$ISO" | sed 's#  .*/#  #' >> pruefsummen.txt)
+          ISO=$(realpath "$ISO")
+          (cd teile && sha256sum auriliux-os.iso.teil* > pruefsummen.txt && sudo sha256sum "$ISO" | sed 's#  .*/#  auriliux-os.iso (ganz): #' >> pruefsummen.txt)
           gh release create "$TAG" teile/* --repo "${{ github.repository }}" \
             --title "Auriliux OS Installer $TAG" \
-            --notes "Zusammensetzen: cat auriliux-os.iso.teil* > auriliux-os.iso (Prüfsummen in pruefsummen.txt)"
+            --notes "Anleitung: INSTALLATION.md im Projekt. Teile prüfen: shasum -a 256 -c pruefsummen.txt – zusammensetzen: cat auriliux-os.iso.teil* > auriliux-os.iso"

@@ -62,13 +62,18 @@ Der Installer (ISO) wird in der Cloud gebaut:
 - Auf GitHub unter **Actions → „Auriliux OS bauen“ → Run workflow** den Haken „Installer (ISO) erzeugen“ setzen.
 - Danach liegt er unter **Releases** in Teilen zu 1,9 GB.
 
-Alle Teile und `pruefsummen.txt` in einen Ordner laden, dann im Terminal zusammensetzen und prüfen:
+Alle Teile und `pruefsummen.txt` in einen Ordner laden. Im Terminal in diesen Ordner wechseln und die Teile prüfen.
+Jede Zeile muss „OK“ melden:
 
 ```bash
-cat auriliux-os.iso.teil* > auriliux-os.iso && shasum -a 256 auriliux-os.iso
+grep teil pruefsummen.txt | shasum -a 256 -c
 ```
 
-Die ausgegebene Prüfsumme muss mit der letzten Zeile in `pruefsummen.txt` übereinstimmen.
+Dann zusammensetzen:
+
+```bash
+cat auriliux-os.iso.teil* > auriliux-os.iso
+```
 
 ## 5. Stick beschreiben
 
