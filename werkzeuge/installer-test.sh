@@ -12,7 +12,8 @@ fehler=0
 pruefe() { if eval "$2"; then echo "  ✓ $1"; else echo "  ✗ $1"; fehler=$((fehler + 1)); fi; }
 
 pre_skript() { awk '/^%pre /{f=1; next} /^%end/{if(f){exit}} f' "$KS"; }
-post_skript() { awk '/^%post /{f=1; next} /^%end/{if(f){exit}} f' "$KS"; }
+post_skript() { awk '/^%post --nochroot/{f=1; next} /^%end/{if(f){exit}} f' "$KS"; }
+admin_skript() { awk '/^%post --interpreter/{f=1; next} /^%end/{if(f){exit}} f' "$KS"; }
 
 mac_platte() {   # $1 = GB, die macOS belegt (Rest bleibt frei)
     rm -f /tmp/mac.img; truncate -s 121G /tmp/mac.img
@@ -61,6 +62,17 @@ pruefe "OpenCore-Startdatei wieder da" "grep -q 'OpenCore-Start' /tmp/m/EFI/BOOT
 umount /tmp/m
 pruefe "Name für die Startauswahl gesetzt" "grep -q 'Auriliux OS' /mnt/sysroot/boot/efi/.contentDetails"
 losetup -d "$dev"
+
+echo "3b. Haken „Administrator“ vergessen → erster Benutzer wird Administrator"
+dnf -y -q install --setopt=install_weak_deps=False shadow-utils >/dev/null
+useradd -m -u 1000 probe 2>/dev/null || true
+gpasswd -d probe wheel >/dev/null 2>&1 || true
+for u in $(getent group wheel | cut -d: -f4 | tr ',' ' '); do gpasswd -d "$u" wheel >/dev/null 2>&1; done
+admin_skript | bash > /tmp/admin.out 2>&1
+sed 's/^/      /' /tmp/admin.out
+pruefe "„probe“ ist Administrator (Gruppe wheel)" "id -nG probe | grep -qw wheel"
+admin_skript | bash > /tmp/admin2.out 2>&1
+pruefe "zweiter Lauf ändert nichts" "grep -q 'Administratoren: probe' /tmp/admin2.out"
 
 echo "4. Zu wenig Platz (macOS belegt 100 GB → ~20 GB frei)"
 dev=$(mac_platte 100)

@@ -100,6 +100,9 @@ Der Installer ist auf Deutsch eingestellt, mit Mac-Tastatur und Zeitzone Berlin.
 1. **Benutzer anlegen:** Name, Passwort und den Haken **„Diesen Benutzer zum Administrator machen“**.
 2. **Festplatten-Passwort:** Wenn der Installer fragt, ein gutes Passwort wählen und **aufschreiben**.
    Ohne dieses Passwort sind die Auriliux-Daten verloren. Niemand kann es zurücksetzen.
+   Für den ersten Start am besten **nur Buchstaben a–x und Ziffern**, ohne y, z und Sonderzeichen. Die
+   Abfrage beim Einschalten ist auf die deutsche Mac-Tastatur eingestellt, aber auf echter Hardware noch
+   nicht getestet. So passt das Passwort auch dann, wenn dort doch eine andere Tastaturbelegung gilt.
 
 „Installation beginnen“ klicken. Das dauert etwa 10–20 Minuten. Danach „Neustart“ und den Stick abziehen.
 
@@ -117,6 +120,12 @@ Erste Schritte in Auriliux:
 - **Kamera:** Die Firmware liest Auriliux beim ersten Start selbst aus macOS aus.
 
 ## Wenn etwas nicht klappt
+
+- **Bildschirm bleibt schwarz oder hängt** (Anmeldung, Sperre): Mit **Strg+Alt+F2** (je nach Einstellung
+  zusätzlich **fn**) zur Text-Anmeldung wechseln und dort mit deinem Benutzer anmelden. Von dort aus:
+  - `loginctl unlock-sessions` hebt eine hängende Sperre auf.
+  - `sudo systemctl restart greetd` startet die goldene Anmeldung neu.
+  - Mit **Strg+Alt+F1** geht es zurück.
 
 - **„Auriliux OS“ fehlt in der OpenCore-Auswahl:** Beim Start ⌥ halten und den Eintrag „EFI Boot“ der
   internen Platte wählen, der nicht OpenCore ist.

@@ -1,2 +1,3 @@
-# Kamera-Firmware liegt (lokal ausgelesen) unter /var/lib/firmware; ruhiger Start mit Boot-Intro (Plymouth) statt Textzeilen
-kargs = ["firmware_class.path=/var/lib/firmware", "rhgb", "quiet", "splash", "loglevel=3", "rd.udev.log_level=3", "vt.global_cursor_default=0"]
+# Kamera-Firmware liegt (lokal ausgelesen) unter /var/lib/firmware; ruhiger Start mit Boot-Intro (Plymouth) statt Textzeilen;
+# deutsche Mac-Tastatur schon bei der Abfrage des Festplatten-Passworts
+kargs = ["firmware_class.path=/var/lib/firmware", "rd.vconsole.keymap=de-mac", "vconsole.keymap=de-mac", "rhgb", "quiet", "splash", "loglevel=3", "rd.udev.log_level=3", "vt.global_cursor_default=0"]

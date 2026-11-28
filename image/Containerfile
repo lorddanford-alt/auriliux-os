@@ -155,8 +155,11 @@ RUN sed -i 's/^PRETTY_NAME=.*/PRETTY_NAME="Auriliux OS (Fedora 45)"/' /usr/lib/o
        auriliux-guardian.service auriliux-herzschlag.service auriliux-update.timer \
        auriliux-update-stand.service bluetooth.service auriliux-tresor.service auriliux-tresor-vorbereiten.service \
     && { systemctl mask bootc-fetch-apply-updates.timer 2>/dev/null || true; } \
-    && { systemctl mask bootloader-update.service 2>/dev/null || true; } && systemctl enable auriliux-efi-update.service \
+    && { systemctl mask bootloader-update.service 2>/dev/null || true; } \
     && firewall-offline-cmd --set-default-zone=drop \
+    && firewall-offline-cmd --zone=drop --add-protocol=ipv6-icmp \
+    && firewall-offline-cmd --zone=drop --add-service=dhcpv6-client \
+    && { getent passwd greeter || { echo "FEHLER: Benutzer „greeter“ für greetd fehlt"; exit 1; }; } \
     && systemctl set-default graphical.target
 
 # USBGuard wird bewusst NICHT hier eingeschaltet: ohne Regeln würde es auch die eingebaute Tastatur und das

@@ -6,6 +6,15 @@
     <font place="ActiveWindow"><name>Noto Sans</name><size>10</size><weight>Bold</weight></font>
   </theme>
   <core><gap>0</gap></core>
+  <!-- Trackpad wie am Mac: natürliches Scrollen, Tippen = Klick, zwei Finger = Rechtsklick -->
+  <libinput>
+    <device category="touchpad">
+      <naturalScroll>yes</naturalScroll>
+      <tap>yes</tap>
+      <clickMethod>clickfinger</clickMethod>
+      <disableWhileTyping>yes</disableWhileTyping>
+    </device>
+  </libinput>
   <keyboard>
     <default />
     <keybind key="W-Return"><action name="Execute" command="foot" /></keybind>
@@ -14,6 +23,14 @@
     <keybind key="W-l"><action name="Execute" command="/usr/libexec/auriliux/sperren" /></keybind>
     <!-- James: zuhören (nochmal drücken bricht ab) -->
     <keybind key="W-j"><action name="Execute" command="auriliux-james hoeren" /></keybind>
+    <!-- Lautstärke- und Helligkeitstasten (PipeWire bzw. brightnessctl) -->
+    <keybind key="XF86AudioRaiseVolume"><action name="Execute" command="wpctl set-volume -l 1.0 @DEFAULT_AUDIO_SINK@ 5%+" /></keybind>
+    <keybind key="XF86AudioLowerVolume"><action name="Execute" command="wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-" /></keybind>
+    <keybind key="XF86AudioMute"><action name="Execute" command="wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle" /></keybind>
+    <keybind key="XF86MonBrightnessUp"><action name="Execute" command="brightnessctl set 5%+" /></keybind>
+    <keybind key="XF86MonBrightnessDown"><action name="Execute" command="brightnessctl set 5%-" /></keybind>
+    <keybind key="XF86KbdBrightnessUp"><action name="Execute" command="brightnessctl -d smc::kbd_backlight set 10%+" /></keybind>
+    <keybind key="XF86KbdBrightnessDown"><action name="Execute" command="brightnessctl -d smc::kbd_backlight set 10%-" /></keybind>
     <keybind key="C-W-q"><action name="Execute" command="/usr/libexec/auriliux/sperren" /></keybind>
   </keyboard>
 </labwc_config>

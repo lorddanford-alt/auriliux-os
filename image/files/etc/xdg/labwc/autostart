@@ -1,4 +1,6 @@
 # Auriliux-Schreibtisch
+# Sitzungsangaben an D-Bus/systemd weitergeben (für Portale: Dateidialoge, Bildschirmfreigabe in Chrome)
+dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE >/dev/null 2>&1
 # Retina-Bildschirm auf doppelte Größe
 /usr/libexec/auriliux/bildschirm-skalieren
 # deutsche Standardordner (Dokumente, Bilder, Musik …) anlegen bzw. finden

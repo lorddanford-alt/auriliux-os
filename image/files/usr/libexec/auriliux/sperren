@@ -1,14 +1,17 @@
 #!/bin/sh
 # Bildschirm sperren (Super+L, Menü „Bildschirm sperren“, Sperrwache).
-# Stürzt die Sperre ab, startet sie sofort neu – der Bildschirm bleibt dabei die ganze Zeit gesperrt
-# (das hält labwc fest). Entsperrt wird nur mit dem richtigen Passwort.
-for versuch in 1 2 3 4 5 6 7 8 9 10; do
+# Stürzt die Sperre ab, startet sie neu – so oft wie nötig, mit wachsender Pause (höchstens 10 s).
+# Der Bildschirm bleibt dabei die ganze Zeit gesperrt (das hält labwc fest). Entsperrt wird nur mit dem
+# richtigen Passwort. Notweg, falls sie gar nicht mehr erscheint: Strg+Alt+F2 (Text-Anmeldung) →
+# „loginctl unlock-sessions“ oder „pkill labwc“ (offene Fenster gehen dabei verloren).
+pause=1
+while true; do
     auriliux-shell sperre
     case $? in
         0) exit 0 ;;          # entsperrt
         3) exit 0 ;;          # war schon gesperrt
         4) exit 4 ;;          # Fenster-Manager kann nicht sperren
     esac
-    sleep 1
+    sleep "$pause"
+    [ "$pause" -lt 10 ] && pause=$((pause + 1))
 done
-exit 1

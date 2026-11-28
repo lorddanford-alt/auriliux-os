@@ -17,7 +17,7 @@ timezone Europe/Berlin --utc
 rootpw --lock
 network --hostname=auriliux
 # Startdateien nur auf die eigene EFI-Partition, NVRAM/Startreihenfolge des Macs nicht verändern
-bootloader --leavebootorder --append="firmware_class.path=/var/lib/firmware rhgb quiet splash loglevel=3 rd.udev.log_level=3 vt.global_cursor_default=0"
+bootloader --leavebootorder --append="firmware_class.path=/var/lib/firmware rd.vconsole.keymap=de-mac vconsole.keymap=de-mac rhgb quiet splash loglevel=3 rd.udev.log_level=3 vt.global_cursor_default=0"
 
 %pre --interpreter=/bin/bash --erroronfail --log=/tmp/auriliux-pre.log
 # ── Vorbereitung: interne Platte finden, Platz prüfen, OpenCore sichern, Aufteilung festlegen ──
@@ -76,6 +76,18 @@ melde "Aufteilung vorbereitet – bestehende Partitionen bleiben unberührt"
 %end
 
 %include /tmp/auriliux-teile.ks
+
+%post --interpreter=/bin/bash
+# ── Sicherheitsnetz: Ist niemand Administrator (Haken im Installer vergessen), wird der erste Benutzer es.
+#    root ist gesperrt – ohne Administrator ließen sich Updates, WLAN-Speichern und der Rückweg nie bedienen.
+mitglieder=$(getent group wheel | cut -d: -f4)
+if [ -z "$mitglieder" ]; then
+    erster=$(awk -F: '$3 >= 1000 && $3 < 60000 {print $1; exit}' /etc/passwd)
+    if [ -n "$erster" ]; then usermod -aG wheel "$erster" && echo "$erster ist jetzt Administrator"; fi
+else
+    echo "Administratoren: $mitglieder"
+fi
+%end
 
 %post --nochroot --interpreter=/bin/bash --log=/tmp/auriliux-post.log
 # ── Nacharbeit: OpenCore unverändert? Auriliux-Eintrag in der OpenCore-Startauswahl benennen ──

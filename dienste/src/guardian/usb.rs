@@ -104,10 +104,18 @@ pub fn einrichten() -> Result<String, String> {
     if eingerichtet() {
         return Ok("schon eingerichtet".into());
     }
+    // erst wenn alle Geräte erkannt sind – sonst fehlten Tastatur/Trackpad (hängen beim MacBook intern am USB)
+    let _ = datei::befehl("udevadm", &["settle", "--timeout=30"], 40);
     let regeln = match datei::befehl("usbguard", &["generate-policy"], 30) {
         Some((0, t)) if t.lines().any(|z| z.starts_with("allow")) => t,
         _ => return Err("Konnte keine Regel für die eingebauten Geräte erzeugen".into()),
     };
+    // fest Eingebautes (Tastatur, Trackpad, Kamera, Bluetooth) und die USB-Verteiler immer erlauben –
+    // auch wenn sich deren Kennung durch ein Update einmal ändert
+    let regeln = format!(
+        "# Auriliux: fest Eingebautes und USB-Verteiler immer erlaubt\nallow with-connect-type \"hardwired\"\nallow id 1d6b:*\n{}",
+        regeln
+    );
     datei::schreiben("/etc/usbguard/rules.conf", regeln.as_bytes(), 0o600).map_err(|e| format!("rules.conf: {}", e))?;
     if !matches!(datei::befehl("systemctl", &["enable", "--now", "usbguard.service"], 40), Some((0, _))) {
         let _ = datei::befehl("systemctl", &["disable", "--now", "usbguard.service"], 40);
