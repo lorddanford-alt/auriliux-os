@@ -25,7 +25,7 @@ set(AURILIUX_QML
     qml/KiStern.qml qml/AppSuche.qml qml/DockKreis.qml qml/Golddock.qml
     qml/Wabe.qml qml/WabenSymbol.qml qml/WabenHintergrund.qml qml/Wabenfinder.qml
     qml/Schreibtisch.qml qml/Aufgaben.qml
-    qml/Fase.qml qml/Knopf.qml qml/Herz.qml qml/Guardian.qml qml/GuardianKarte.qml qml/Goldtor.qml qml/Anmeldebildschirm.qml qml/Sperrbildschirm.qml qml/Zentrale.qml qml/Charakter.qml qml/Tresor.qml qml/James.qml qml/JamesBlase.qml)
+    qml/Fase.qml qml/Knopf.qml qml/Herz.qml qml/Guardian.qml qml/GuardianKarte.qml qml/Goldtor.qml qml/Anmeldebildschirm.qml qml/Sperrbildschirm.qml qml/Zentrale.qml qml/Charakter.qml qml/Tresor.qml qml/James.qml qml/JamesBlase.qml qml/PasswortBestaetigung.qml)
 set_source_files_properties(qml/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 # Dateien liegen im Ordner qml/, sollen im Modul aber direkt neben qmldir liegen – sonst sehen sie
 # die eigenen Typen (Theme, System, Ebene) nicht
@@ -51,6 +51,10 @@ target_include_directories(auriliux-shell PRIVATE src)
 target_compile_options(auriliux-shell PRIVATE -Wall -Wextra)
 target_link_libraries(auriliux-shell PRIVATE Qt6::Gui Qt6::Quick Qt6::Qml Qt6::WaylandClient Qt6::WaylandClientPrivate
                       Qt6::Concurrent Qt6::DBus Qt6::Network Qt6::Multimedia LayerShellQt::Interface pam)
+
+# kleines Hilfsprogramm für Passwort-Bestätigungen (Guardian, Tresor) – nur PAM, sonst nichts
+add_executable(passwort-pruefen src/passwort-pruefen.c)
+target_link_libraries(passwort-pruefen PRIVATE pam)
 
 # Weckwort „James“: Spracherkennung whisper.cpp fest eingebaut (nur Prozessor, mit AVX2/FMA des i5 aus 2015).
 # Ohne Quellordner wird ohne Weckwort gebaut – James hört dann nur auf Super+J.

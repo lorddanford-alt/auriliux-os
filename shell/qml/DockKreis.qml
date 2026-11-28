@@ -13,8 +13,11 @@ Item {
     property bool fokus: false
     property bool startet: false
     property bool homeAn: false
+    property bool ziehbar: false             // angeheftete Programme lassen sich umsortieren
     signal geklickt()
     signal rechtsklick()
+    signal zieht(real fensterX)              // während des Ziehens: Mausposition im Dock-Fenster
+    signal losgelassen()
 
     width: basis * faktor
     height: basis * faktor
@@ -144,6 +147,17 @@ Item {
     MouseArea {
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton | Qt.RightButton
-        onClicked: (m) => m.button === Qt.RightButton ? k.rechtsklick() : k.geklickt()
+        property real startX: 0
+        property bool gezogen: false
+        cursorShape: gezogen ? Qt.ClosedHandCursor : Qt.ArrowCursor
+        onPressed: (m) => { startX = m.x; gezogen = false }
+        onPositionChanged: (m) => {
+            if (!k.ziehbar || !(pressedButtons & Qt.LeftButton)) return
+            if (!gezogen && Math.abs(m.x - startX) > 10) gezogen = true
+            if (gezogen) k.zieht(mapToItem(null, m.x, m.y).x)
+        }
+        onReleased: if (gezogen) k.losgelassen()
+        onCanceled: if (gezogen) { gezogen = false; k.losgelassen() }
+        onClicked: (m) => { if (gezogen) { gezogen = false; return } m.button === Qt.RightButton ? k.rechtsklick() : k.geklickt() }
     }
 }

@@ -71,6 +71,8 @@ for t in uebersicht schutz ereignisse herzschlag; do
   sleep 9; grim /aus/guardian-$t.png
   kill $P; sleep 1
 done
+HOME=$H AURILIUX_VORSCHAU=guardian auriliux-shell guardian bestaetigen > /aus/guardian-bestaetigen.log 2>&1 & P=$!
+sleep 8; grim /aus/52-guardian-passwort.png; kill $P; sleep 1
 mv /aus/guardian-uebersicht.png /aus/11-guardian.png; mv /aus/guardian-schutz.png /aus/12-schutz.png
 mv /aus/guardian-ereignisse.png /aus/13-ereignisse.png; mv /aus/guardian-herzschlag.png /aus/14-herzschlag.png
 HOME=$H AURILIUX_VORSCHAU=karte auriliux-shell goldleiste > /aus/karte.log 2>&1 & P=$!
@@ -115,13 +117,14 @@ sleep 6; grim /aus/28-charakter-baum.png; kill $P; sleep 1
 HOME=$H AURILIUX_VORSCHAU=charakter-editor auriliux-shell charakter bildung > /aus/charakter-editor.log 2>&1 & P=$!
 sleep 6; grim /aus/29-charakter-editor.png; kill $P; sleep 1
 # Tresor (ohne Tresor-Dienst im Bau-Behälter → Beispielwerte; Vorschau-Code 12-34-56)
-for t in tresor tresor-neu tresor-fehler tresor-offen tresor-versionen tresor-rettung; do
+for t in tresor tresor-neu tresor-fehler tresor-offen tresor-versionen tresor-rettung tresor-vergessen; do
   HOME=$H AURILIUX_VORSCHAU=$t auriliux-shell tresor > /aus/$t.log 2>&1 & P=$!
   sleep 5; grim /aus/$t.png; kill $P; sleep 1
 done
 HOME=$H AURILIUX_VORSCHAU=tresor-oeffnet auriliux-shell tresor > /aus/tresor-oeffnet.log 2>&1 & P=$!
 sleep 3; grim /aus/tresor-oeffnet-1.png; sleep 1.6; grim /aus/tresor-oeffnet-2.png; kill $P; sleep 1
 n=30; for t in tresor tresor-neu tresor-fehler tresor-oeffnet-1 tresor-oeffnet-2 tresor-offen tresor-versionen tresor-rettung; do mv /aus/$t.png /aus/$n-$t.png; n=$((n+1)); done
+mv /aus/tresor-vergessen.png /aus/53-tresor-vergessen.png
 /usr/libexec/auriliux/auriliux-tresor --einmal > /aus/tresor-status.json 2> /aus/tresor-dienst.log
 # ── James: Fenster + Dienst gegen die Attrappe des Servers (läuft auf dem Bau-Rechner, 127.0.0.1:8766) ──
 J=/tmp/jheim; mkdir -p "$J/.config/auriliux" "$J/.local/bin"

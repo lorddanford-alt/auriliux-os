@@ -64,10 +64,21 @@ Window {
         }
         function onAntwort(kennung, d) {
             if (kennung === "pruefen") return
+            // Antwort auf eine Passwort-Bestätigung: bei falschem Passwort die Abfrage offen lassen
+            if (kennung === "bestaetigt" && gw.bestaetigung) {
+                if (!d.ok && /Passwort|Fehlversuch|Administrator/.test(d.fehler || "")) { bestaetigungsFeld.arbeitet = false; bestaetigungsFeld.fehler = d.fehler; bestaetigungsFeld.fokus(); return }
+                gw.bestaetigung = null; bestaetigungsFeld.arbeitet = false; bestaetigungsFeld.leeren()
+            }
             if (d.ok) gw.melden(d.text || "Erledigt"); else gw.melden(d.fehler || "Fehlgeschlagen", true)
         }
     }
     function aktion(id, a) { Waechter.befehl("aktion", ["aktion", id, a]) }
+    // riskante Schritte (gleiche Liste wie im Guardian-Dienst) → erst Passwort
+    function riskant(art, aktion) {
+        return ["usb:zulassen", "start:freigeben", "erpresser:fortsetzen", "autostart:behalten", "autostart:zurueck"].indexOf(art + ":" + aktion) >= 0
+    }
+    property var bestaetigung: null             // { text, teile } – wartet auf das Passwort
+    function bestaetigen(text, teile) { bestaetigung = { text: text, teile: teile }; bestaetigungsFeld.leeren(); Qt.callLater(bestaetigungsFeld.fokus) }
 
     function zustandSpeichern() { System.schreibe("guardian-zustand", JSON.stringify(zustand)) }
     function ausblenden(id) { const z = { hidden: zustand.hidden.concat([id]), done: zustand.done }; zustand = z; zustandSpeichern() }
@@ -158,6 +169,11 @@ Window {
         try { const z = JSON.parse(System.einstellung("guardian-zustand")); if (z && z.hidden) zustand = z } catch (e) {}
         try { const v = JSON.parse(System.einstellung("guardian-verlauf")); if (Array.isArray(v)) verlauf = v } catch (e) {}
         if (startAbschnitt && abschnitte.some(a => a[0] === startAbschnitt)) abschnitt = startAbschnitt
+        // Vorschau-Bild der Passwort-Bestätigung (nur im Bau)
+        if (startAbschnitt === "bestaetigen" && System.umgebung("AURILIUX_VORSCHAU") !== "") {
+            abschnitt = "ereignisse"
+            Qt.callLater(() => { bestaetigen("„Freigeben“: Programm „probe-skript“ wollte starten", ["aktion", "probe", "freigeben"]); bestaetigungsFeld.fehler = "Falsches Passwort." })
+        }
         allesPruefen()
     }
 
@@ -276,9 +292,11 @@ Window {
                         text: modelData.text
                         gefuellt: index === 0
                         art: index === 0 ? (modelData.aktion === "beenden" ? "rot" : "gold") : "leise"
-                        nachfrage: modelData.aktion === "zulassen" || modelData.aktion === "freigeben" || modelData.aktion === "fortsetzen" ? "Sicher? Nochmal" : ""
                         onGeklickt: {
                             if (modelData.aktion === "tresor") { System.starte("auriliux-shell", ["tresor", "rettung", String(kt.r.ereignis.zeit)]); return }
+                            if (kt.w && kt.w.riskant(kt.r.ereignis.art, modelData.aktion)) {
+                                kt.w.bestaetigen("„" + modelData.text + "“: " + (kt.r.title || ""), ["aktion", kt.r.ereignis.id, modelData.aktion]); return
+                            }
                             kt.fertig = true; Waechter.befehl("aktion", ["aktion", kt.r.ereignis.id, modelData.aktion])
                         }
                     }
@@ -637,8 +655,8 @@ Window {
                         }
                         Text { width: 260; anchors.verticalCenter: parent.verticalCenter; text: modelData.grund; wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight; color: "#bba987"; font.family: Theme.schrift; font.pixelSize: 12 }
                         Zahl { b: 90; text: gw.zeit(modelData.zeit) }
-                        Knopf { text: "Zurückholen"; nachfrage: "Sicher? Nochmal"; onGeklickt: Waechter.befehl("q", ["quarantaene", modelData.id, "zurueckholen"]) }
-                        Knopf { text: "Löschen"; art: "rot"; nachfrage: "Endgültig?"; onGeklickt: Waechter.befehl("q", ["quarantaene", modelData.id, "loeschen"]) }
+                        Knopf { text: "Zurückholen"; onGeklickt: gw.bestaetigen("„" + (modelData.name || modelData.id) + "“ aus der Quarantäne zurückholen – sie kann wieder Schaden anrichten.", ["quarantaene", modelData.id, "zurueckholen"]) }
+                        Knopf { text: "Löschen"; art: "rot"; onGeklickt: gw.bestaetigen("„" + (modelData.name || modelData.id) + "“ endgültig löschen.", ["quarantaene", modelData.id, "loeschen"]) }
                     }
                 }
                 Ueberschrift { text: "ERLEDIGT"; visible: parent.erledigte.length > 0 }
@@ -836,5 +854,26 @@ Window {
         color: Qt.rgba(14 / 255, 10 / 255, 4 / 255, 0.95)
         border.width: 1; border.color: gw.meldung && gw.meldung.fehler ? Theme.rot : Theme.gold_a(0.5)
         Text { id: mt; anchors.centerIn: parent; text: gw.meldung ? gw.meldung.text : ""; color: gw.meldung && gw.meldung.fehler ? "#ffc7cc" : Theme.text; font.family: Theme.monoSchrift; font.pixelSize: 11 }
+    }
+
+    // ════════ Passwort-Bestätigung (riskante Entscheidungen) ════════
+    Rectangle {
+        visible: gw.bestaetigung !== null
+        anchors.fill: parent
+        color: Qt.rgba(0, 0, 0, 0.78)
+        MouseArea { anchors.fill: parent }
+        Item {
+            anchors.centerIn: parent
+            width: Math.min(500, parent.width - 60); height: bestaetigungsFeld.implicitHeight + 48
+            Fase { anchors.fill: parent; fase: 16; flaeche: Qt.rgba(17 / 255, 12 / 255, 5 / 255, 1); rand: Theme.gold_a(0.45) }
+            PasswortBestaetigung {
+                id: bestaetigungsFeld
+                x: 24; y: 24; width: parent.width - 48
+                text: gw.bestaetigung ? gw.bestaetigung.text : ""
+                knopf: "Erlauben"
+                onBestaetigt: (pw) => { arbeitet = true; Waechter.befehl("bestaetigt", gw.bestaetigung.teile.concat([pw])) }
+                onAbgebrochen: { gw.bestaetigung = null; leeren() }
+            }
+        }
     }
 }

@@ -1,0 +1,4 @@
+#%PAM-1.0
+# Bestätigung riskanter Schritte (Guardian-Freigaben, Tresor-Code vergessen) mit dem Anmelde-Passwort
+auth       include      system-auth
+account    include      system-auth

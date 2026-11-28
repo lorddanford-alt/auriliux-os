@@ -6,7 +6,7 @@ import QtQuick.Window
 
 Window {
     id: karte
-    width: 410; height: 330
+    width: 410; height: 470
     color: "transparent"
     visible: false
     title: "Guardian-Hinweis"
@@ -17,6 +17,12 @@ Window {
     property int weitere: 0
     property string ergebnis: ""
     property bool fehler: false
+    property string frage: ""                 // riskante Aktion, die auf das Passwort wartet
+    // gleiche Liste wie im Guardian-Dienst (riskant → Passwort eines Administrators)
+    function riskant(art, aktion) {
+        return ["usb:zulassen", "start:freigeben", "erpresser:fortsetzen", "autostart:behalten", "autostart:zurueck"].indexOf(art + ":" + aktion) >= 0
+    }
+    function frageEnde() { frage = ""; abfrage.arbeitet = false; abfrage.leeren(); Ebene.tastatur(karte, 0) }
 
     function offene() {
         return (Waechter.status.ereignisse || []).filter(e => !e.erledigt && (e.stufe === "hoch" || e.stufe === "mittel"))
@@ -47,7 +53,7 @@ Window {
         bereich()
         if (aktuell && aktuell.stufe !== "hoch") ausblenden.restart(); else ausblenden.stop()
     }
-    function schliessen() { ausblenden.stop(); aktuell = null; ergebnis = ""; visible = false; pruefen() }
+    function schliessen() { ausblenden.stop(); if (frage !== "") frageEnde(); aktuell = null; ergebnis = ""; visible = false; pruefen() }
     function bereich() { Ebene.klickBereich(karte, [{ x: 0, y: 0, w: width, h: Math.ceil(tafel.height) + 2 }]) }
 
     Timer { id: ausblenden; interval: 25000; onTriggered: karte.schliessen() }
@@ -57,6 +63,10 @@ Window {
         function onStatusGeaendert() { karte.pruefen() }
         function onAntwort(kennung, d) {
             if (kennung !== "karte") return
+            if (karte.frage !== "" && !d.ok && /Passwort|Fehlversuch|Administrator/.test(d.fehler || "")) {
+                abfrage.arbeitet = false; abfrage.fehler = d.fehler; abfrage.fokus(); return
+            }
+            if (karte.frage !== "") karte.frageEnde()
             karte.fehler = !d.ok
             karte.ergebnis = d.ok ? (d.text || "Erledigt") : (d.fehler || "Fehlgeschlagen")
             fertig.restart()
@@ -98,9 +108,18 @@ Window {
                 color: "#bba987"; font.family: Theme.schrift; font.pixelSize: 12; lineHeight: 1.12
             }
             Item { width: 1; height: 4 }
+            PasswortBestaetigung {
+                id: abfrage
+                visible: karte.frage !== "" && karte.ergebnis === ""
+                width: parent.width
+                text: "Diese Entscheidung kann deinen Rechner gefährden, wenn sie falsch ist."
+                knopf: "Erlauben"
+                onBestaetigt: (pw) => { arbeitet = true; Waechter.befehl("karte", ["aktion", karte.aktuell.id, karte.frage, pw]) }
+                onAbgebrochen: karte.frageEnde()
+            }
             Row {
                 spacing: 8
-                visible: karte.ergebnis === ""
+                visible: karte.ergebnis === "" && karte.frage === ""
                 Repeater {
                     model: karte.aktuell ? karte.aktuell.knoepfe : []
                     Knopf {
@@ -109,9 +128,14 @@ Window {
                         text: modelData.text
                         gefuellt: index === 0
                         art: index === 0 ? (modelData.aktion === "beenden" ? "rot" : "gold") : "leise"
-                        nachfrage: modelData.aktion === "zulassen" || modelData.aktion === "freigeben" || modelData.aktion === "fortsetzen" ? "Sicher? Nochmal" : ""
                         onGeklickt: {
                             ausblenden.stop()
+                            if (karte.riskant(karte.aktuell.art, modelData.aktion)) {
+                                karte.frage = modelData.aktion
+                                Ebene.tastatur(karte, 2)            // Tastatur nur für die Passworteingabe
+                                Qt.callLater(abfrage.fokus)
+                                return
+                            }
                             // „Im Tresor retten“ öffnet den Tresor (Code nötig) – kein Befehl an Guardian
                             if (modelData.aktion === "tresor") System.starte("auriliux-shell", ["tresor", "rettung", String(karte.aktuell.zeit)])
                             else Waechter.befehl("karte", ["aktion", karte.aktuell.id, modelData.aktion])

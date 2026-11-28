@@ -32,7 +32,9 @@ RUN mkdir -p /ausgabe/usr/share/auriliux/james \
 COPY shell /quelle/shell
 RUN cmake -S /quelle/shell -B /bauordner -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DAURILIUX_WHISPER=/quelle/whisper \
     && cmake --build /bauordner --target auriliux-shell \
-    && install -Dm755 /bauordner/auriliux-shell /ausgabe/usr/bin/auriliux-shell
+    && cmake --build /bauordner --target passwort-pruefen \
+    && install -Dm755 /bauordner/auriliux-shell /ausgabe/usr/bin/auriliux-shell \
+    && install -Dm700 /bauordner/passwort-pruefen /ausgabe/usr/libexec/auriliux/passwort-pruefen
 # Weckwort prüfen: Probesätze mit Sprachausgabe erzeugen und erkennen lassen (zwei davon kommen für die Vorschau mit)
 RUN cd /tmp && espeak-ng -v de -s 140 -w probe-ja-1.wav "Dschejms, wie spät ist es?" \
     && espeak-ng -v de -s 140 -w probe-ja-2.wav "Hey Dschejms, mach bitte das Licht an." \

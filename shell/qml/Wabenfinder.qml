@@ -65,6 +65,40 @@ Window {
     function hinweis(text, fehler) { toastText.text = text; toast.fehler = !!fehler; toast.opacity = 1; toastTimer.interval = fehler ? 4200 : 2400; toastTimer.restart() }
     function pruefe(fehler, ok) { if (fehler) hinweis(fehler, true); else if (ok) hinweis(ok) }
 
+    // ── Ziehen & Ablegen: Datei/Ordner auf eine Ordner-Wabe oder einen Ort links ziehen = verschieben,
+    //    mit Alt oder Strg = kopieren, auf den Papierkorb = wegwerfen ──
+    property var gezogen: null
+    property bool kopieModus: false
+    function ziehenVorbereiten(maus, mx, my) {
+        const p = maus.mapToItem(null, mx, my)
+        geist.x = p.x - geist.width / 2; geist.y = p.y - geist.height / 2
+    }
+    function ziehenStart(it) { gezogen = it; tipp = null; geist.Drag.active = true }
+    function ziehenEnde(modifiers) {
+        if (!geist.Drag.active) return
+        kopieModus = !!(modifiers & (Qt.AltModifier | Qt.ControlModifier))
+        geist.Drag.drop()
+        geist.Drag.active = false
+        gezogen = null
+    }
+    function ablegen(ziel, papierkorb) {
+        const it = gezogen
+        if (!it) return
+        if (papierkorb) { wegwerfen(it); return }
+        if (ziel === it.path || ziel.startsWith(it.path + "/")) { hinweis("Ein Ordner kann nicht in sich selbst liegen", true); return }
+        const eltern = it.path.substring(0, it.path.lastIndexOf("/"))
+        const zielName = ziel.split("/").pop() || ziel
+        if (kopieModus) {
+            Dateien.kopieren("ziehen", it.path, ziel)
+            hinweis("Kopiere „" + it.name + "“ nach „" + zielName + "“ …")
+            return
+        }
+        if (ziel === eltern) return
+        pruefe(Dateien.verschieben(it.path, ziel), "„" + it.name + "“ liegt jetzt in „" + zielName + "“")
+        if (ring && ring.pfad === it.path) ringSchliessen()
+        aktualisieren()
+    }
+
     // ── Navigation ──
     function gehe(pfad, merken) {
         const d = Dateien.liste(pfad)
@@ -154,6 +188,11 @@ Window {
     }
     Connections {
         target: Dateien
+        function onKopiert(kennung, fehler) {
+            if (kennung !== "ziehen") return
+            wf.pruefe(fehler, "Kopie fertig")
+            wf.aktualisieren()
+        }
         function onGefunden(anfrage, items) {
             if (!wf.ring || wf.ring.art !== "suche" || wf.ring.anfrage !== anfrage) return
             wf.ringEintraege = wf.sortiert(items)
@@ -334,8 +373,8 @@ Window {
                 readonly property bool aktivierbar: modelData.art !== "leer"
                 x: wf.zellX(index); y: wf.zellY(index)
                 width: wf.hexB; height: wf.hexH
-                scale: maus.containsMouse && aktivierbar ? 1.07 : 1
-                z: maus.containsMouse ? 2 : 1
+                scale: ablage.containsDrag ? 1.12 : maus.containsMouse && aktivierbar ? 1.07 : 1
+                z: maus.containsMouse || ablage.containsDrag ? 2 : 1
                 Behavior on scale { NumberAnimation { duration: 220 } }
                 Wabe {
                     anchors.fill: parent
@@ -386,12 +425,24 @@ Window {
                     }
                     NumberAnimation { target: zelle; property: "scale"; to: 1; duration: 280 }
                 }
+                DropArea {
+                    id: ablage
+                    anchors.fill: parent
+                    keys: ["auriliux-eintrag"]
+                    enabled: zelle.modelData.art === "ordner"
+                    onDropped: (d) => { d.accept(); wf.ablegen(zelle.modelData.item.path, false) }
+                }
                 MouseArea {
                     id: maus
                     anchors.fill: parent
                     hoverEnabled: true
                     acceptedButtons: Qt.LeftButton | Qt.RightButton
                     cursorShape: zelle.aktivierbar ? Qt.PointingHandCursor : Qt.ArrowCursor
+                    drag.target: zelle.modelData.art === "ordner" ? geist : null
+                    drag.threshold: 12
+                    drag.onActiveChanged: if (drag.active) { klickT.stop(); wf.ziehenStart(zelle.modelData.item) }
+                    onPressed: (m) => wf.ziehenVorbereiten(maus, m.x, m.y)
+                    onReleased: (m) => wf.ziehenEnde(m.modifiers)
                     property bool doppelt: false
                     Timer { id: klickT; interval: 230; onTriggered: wf.zelleAktivieren(zelle.index, zelle) }
                     onClicked: (m) => {
@@ -400,6 +451,7 @@ Window {
                     }
                     onDoubleClicked: { klickT.stop(); if (zelle.modelData.art === "ordner") wf.gehe(zelle.modelData.item.path); else wf.zelleAktivieren(zelle.index, zelle) }
                     onPositionChanged: (m) => {
+                        if (drag.active) { wf.kopieModus = !!(m.modifiers & (Qt.AltModifier | Qt.ControlModifier)); return }
                         const p = mapToItem(null, m.x, m.y)
                         const info = zelle.modelData.art === "dateien" ? { name: "Lose Dateien", kind: "Dateien direkt in diesem Ordner", hint: "Klick: Dateien im Kreis zeigen" }
                                    : zelle.modelData.art === "ordner" ? Object.assign({}, zelle.modelData.item, { hint: "Klick: Inhalt im Kreis · Doppelklick: betreten" }) : null
@@ -528,8 +580,8 @@ Window {
                 readonly property var it: modelData.it
                 x: modelData.x - 31; y: modelData.y - 35
                 width: 62; height: 70
-                scale: knMaus.containsMouse ? 1.18 : 1
-                z: knMaus.containsMouse ? 4 : 1
+                scale: knAblage.containsDrag ? 1.25 : knMaus.containsMouse ? 1.18 : 1
+                z: knMaus.containsMouse || knAblage.containsDrag ? 4 : 1
                 Behavior on scale { NumberAnimation { duration: 180 } }
                 Wabe {
                     anchors.fill: parent
@@ -576,17 +628,30 @@ Window {
                     }
                     NumberAnimation { target: kn; property: "scale"; to: 1; duration: 150 }
                 }
+                DropArea {
+                    id: knAblage
+                    anchors.fill: parent
+                    keys: ["auriliux-eintrag"]
+                    enabled: kn.it.dir && (!wf.gezogen || wf.gezogen.path !== kn.it.path)
+                    onDropped: (d) => { d.accept(); wf.ablegen(kn.it.path, false) }
+                }
                 MouseArea {
                     id: knMaus
                     anchors.fill: parent
                     hoverEnabled: true
                     acceptedButtons: Qt.LeftButton | Qt.RightButton
                     cursorShape: Qt.PointingHandCursor
+                    drag.target: geist
+                    drag.threshold: 12
+                    drag.onActiveChanged: if (drag.active) { knKlick.stop(); wf.ziehenStart(kn.it) }
+                    onPressed: (m) => wf.ziehenVorbereiten(knMaus, m.x, m.y)
+                    onReleased: (m) => wf.ziehenEnde(m.modifiers)
                     Timer { id: knKlick; interval: 230
                             onTriggered: { if (kn.it.dir) wf.ringOeffnen(kn, wf.ordnerRing(kn.it)); else wf.auswahlPfad = kn.it.path } }
                     onClicked: (m) => { if (m.button === Qt.RightButton) { const p = mapToItem(null, m.x, m.y); wf.menueOeffnen(p.x, p.y, kn.it) } else knKlick.restart() }
                     onDoubleClicked: { knKlick.stop(); wf.oeffneEintrag(kn.it) }
-                    onPositionChanged: (m) => { const p = mapToItem(null, m.x, m.y)
+                    onPositionChanged: (m) => { if (drag.active) { wf.kopieModus = !!(m.modifiers & (Qt.AltModifier | Qt.ControlModifier)); return }
+                        const p = mapToItem(null, m.x, m.y)
                         wf.tipp = { info: Object.assign({}, kn.it, { hint: kn.it.dir ? "Klick: Inhalt zeigen · Doppelklick: betreten" : "Doppelklick: öffnen" }), x: p.x, y: p.y } }
                     onExited: wf.tipp = null
                 }
@@ -642,9 +707,15 @@ Window {
                     id: ort
                     required property var modelData
                     width: 58; height: 66
-                    scale: ortMaus.containsMouse ? 1.1 : 1
+                    scale: ortAblage.containsDrag ? 1.2 : ortMaus.containsMouse ? 1.1 : 1
                     Behavior on scale { NumberAnimation { duration: 200 } }
                     readonly property bool aktiv: wf.aktiverOrt === modelData.path
+                    DropArea {
+                        id: ortAblage
+                        anchors.fill: parent
+                        keys: ["auriliux-eintrag"]
+                        onDropped: (d) => { d.accept(); wf.ablegen(ort.modelData.path, ort.modelData.id === "trash") }
+                    }
                     Wabe { anchors.fill: parent; rand: 1.5; variante: ort.aktiv ? "ortAktiv" : "ort" }
                     WabenSymbol {
                         anchors.centerIn: parent; width: 24; height: 24
@@ -963,6 +1034,28 @@ Window {
             model: startText.zeilen
             delegate: Text { required property var modelData; text: modelData; color: Theme.akzent
                              font.family: Theme.monoSchrift; font.pixelSize: 12; font.letterSpacing: 1.4; font.capitalization: Font.AllUppercase }
+        }
+    }
+
+    // ── das gezogene Element: kleine Wabe unter dem Mauszeiger ──
+    Item {
+        id: geist
+        width: 92; height: 104
+        z: 1000
+        visible: Drag.active
+        Drag.keys: ["auriliux-eintrag"]
+        Drag.hotSpot.x: width / 2
+        Drag.hotSpot.y: height / 2
+        Wabe { anchors.fill: parent; rand: 1.5; variante: "auswahl"; opacity: 0.9 }
+        WabenSymbol { anchors.horizontalCenter: parent.horizontalCenter; y: 24; width: 30; height: 30
+                      name: wf.gezogen && wf.gezogen.dir ? "folder" : "files"; farbe: Theme.goldHell }
+        Text { anchors.horizontalCenter: parent.horizontalCenter; y: 60; width: parent.width - 18; horizontalAlignment: Text.AlignHCenter
+               elide: Text.ElideMiddle; text: wf.gezogen ? wf.gezogen.name : ""; color: Theme.text; font.family: Theme.schrift; font.pixelSize: 11 }
+        Rectangle {
+            anchors.horizontalCenter: parent.horizontalCenter; anchors.top: parent.bottom; anchors.topMargin: 4
+            width: art.implicitWidth + 14; height: 18; radius: 2; color: Qt.rgba(0, 0, 0, 0.75); border.width: 1; border.color: Theme.gold_a(0.5)
+            Text { id: art; anchors.centerIn: parent; text: wf.kopieModus ? "KOPIEREN" : "VERSCHIEBEN  ·  ALT = KOPIEREN"
+                   color: Theme.goldHell; font.family: Theme.monoSchrift; font.pixelSize: 9; font.letterSpacing: 1.2 }
         }
     }
 }

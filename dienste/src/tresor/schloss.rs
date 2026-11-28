@@ -169,6 +169,13 @@ impl Schloss {
         Ok(())
     }
 
+    /// Fehlversuche vergessen (nach erfolgreicher Bestätigung mit dem Anmelde-Passwort)
+    pub fn entsperren(&mut self) {
+        self.fehler = 0;
+        self.gesperrt_bis = 0;
+        self.sperre_schreiben();
+    }
+
     /// Ok(()) oder Err((Meldung, gesperrt bis ms))
     pub fn pruefen(&mut self, code: &str) -> Result<(), (String, i64)> {
         let jetzt = datei::jetzt_ms();

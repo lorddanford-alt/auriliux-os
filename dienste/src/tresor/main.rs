@@ -513,6 +513,21 @@ impl Dienst {
                     Err((t, bis)) => J::o(vec![("ok", J::B(false)), ("fehler", J::t(t)), ("gesperrtBis", J::I(bis))]).text(),
                 }
             }
+            // Code vergessen: mit dem Anmelde-Passwort eines Administrators einen neuen Code setzen
+            ["code-vergessen", passwort, neu] => match gemeinsam::passwort::pruefen(uid, passwort) {
+                Err(e) => fehler(&e),
+                Ok(()) => {
+                    let mut g = self.g.lock().unwrap();
+                    match g.schloss.setzen(neu) {
+                        Ok(()) => {
+                            g.schloss.entsperren();
+                            let karte = g.schloss.karte_ausgeben(uid);
+                            ok(vec![("karte", J::t(karte)), ("text", J::t("Neuer Code gespeichert – der Tresor ist offen"))])
+                        }
+                        Err(e) => fehler(&e),
+                    }
+                }
+            },
             ["schliessen", karte] => {
                 self.g.lock().unwrap().schloss.karte_weg(karte);
                 ok(vec![])

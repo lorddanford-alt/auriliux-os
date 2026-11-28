@@ -33,6 +33,8 @@ Window {
     property string notfall: ""
     property bool notfallZeigen: false
     property bool aendernOffen: false
+    property bool vergessenOffen: false        // „Code vergessen?“: erst Anmelde-Passwort, dann neuer Code
+    property string vergessenPasswort: ""
     property var eintraege: []
     property string listenHinweis: ""
     property var fach: null                 // geöffnetes Fach { quelle, id, zeit }
@@ -93,7 +95,8 @@ Window {
             if (modus === "neu2") {
                 if (vorschau.startsWith("tresor")) verarbeiten("code-neu", { ok: true, karte: "vorschau", notfall: "K7QM-3XRA-9VTE-HN2D-W5PJ-C8YF-B4ZS-6GMR" })
                 else TresorDienst.befehl("code-neu", ["code-neu", code])
-            } else TresorDienst.befehl("code-aendern", ["code-aendern", karte, code])
+            } else if (vergessenPasswort !== "") TresorDienst.befehl("code-vergessen", ["code-vergessen", vergessenPasswort, code])
+            else TresorDienst.befehl("code-aendern", ["code-aendern", karte, code])
         }
     }
     function fehler(t) { fehlerAnzeige = true; hinweis = t; zahlen = []; wackeln.restart(); klang("fehler") }
@@ -180,6 +183,12 @@ Window {
                 tw.pruefe = false
                 if (d.ok) { tw.karte = d.karte; tw.aendernOffen = false; tw.modus = "oeffnen"; tw.zahlen = []; tw.melden("Neuer Code gespeichert") }
                 else { tw.fehler(d.fehler); tw.modus = "aendern" }
+            } else if (kennung === "code-vergessen") {
+                tw.pruefe = false
+                tw.vergessenPasswort = ""
+                tw.aendernOffen = false; tw.modus = "oeffnen"; tw.zahlen = []; tw.hinweis = ""
+                if (d.ok) { tw.karte = d.karte; tw.gesperrtBis = 0; tw.melden(d.text || "Neuer Code gespeichert"); tw.tuerOeffnen() }
+                else { tw.vergessenOffen = true; vergessenAbfrage.fehler = d.fehler || "Hat nicht geklappt"; Qt.callLater(vergessenAbfrage.fokus) }
             } else if (kennung === "liste") {
                 if (d.ok) { tw.eintraege = d.eintraege || []; tw.listenHinweis = d.hinweis || "" } else tw.melden(d.fehler, true)
             } else if (kennung === "ordner") {
@@ -280,6 +289,7 @@ Window {
             if (vorschau === "tresor-versionen") versionenLaden("Dokumente/Bewerbung.pdf"); else rettungLaden(Date.now() - 2 * 60000)
         }
         if (vorschau === "tresor-offen") { karte = "vorschau"; phase = "innen"; innen.opacity = 1; innen.scale = 1; listeLaden(); Qt.callLater(() => fachOeffnen(eintraege[1])) }
+        if (vorschau === "tresor-vergessen") Qt.callLater(() => { tw.vergessenOffen = true; vergessenAbfrage.fehler = "Falsches Passwort." })
         if (vorschau === "tresor-oeffnet") Qt.callLater(() => { zahlen = [12, 34]; einrasten(56) })
         tastatur.forceActiveFocus()
     }
@@ -297,7 +307,7 @@ Window {
             else if (e.key === Qt.Key_Left || e.key === Qt.Key_Down) { s.drehung -= schritt; e.accepted = true }
             else if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter || e.key === Qt.Key_Space) { tw.einrasten(s.zahl); e.accepted = true }
             else if (e.key === Qt.Key_Backspace) { tw.zurueck(); e.accepted = true }
-            else if (e.key === Qt.Key_Escape) { tw.zahlen = []; if (tw.aendernOffen) { tw.aendernOffen = false; tw.modus = "oeffnen" } e.accepted = true }
+            else if (e.key === Qt.Key_Escape) { tw.zahlen = []; if (tw.aendernOffen) { tw.aendernOffen = false; tw.modus = "oeffnen"; tw.vergessenPasswort = "" } e.accepted = true }
         }
     }
 
@@ -822,6 +832,15 @@ Window {
             }
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
+                visible: tw.codeGesetzt && tw.modus === "oeffnen" && !tw.pruefe && tw.phase === "tuer"
+                text: "CODE VERGESSEN?"
+                color: vergessenMaus.containsMouse ? Theme.goldHell : Theme.akzent
+                font.family: Theme.monoSchrift; font.pixelSize: 10; font.letterSpacing: 1.6; font.underline: vergessenMaus.containsMouse
+                MouseArea { id: vergessenMaus; anchors.fill: parent; anchors.margins: -6; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                            onClicked: { tw.zahlen = []; vergessenAbfrage.leeren(); tw.vergessenOffen = true; Qt.callLater(vergessenAbfrage.fokus) } }
+            }
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
                 text: "Ziehen im Kreis · Mausrad · Pfeiltasten (mit Umschalt in Zehnern) · Enter rastet ein · Rücktaste nimmt zurück"
                 color: Theme.leise; font.family: Theme.monoSchrift; font.pixelSize: 10; font.letterSpacing: 0.8
             }
@@ -909,7 +928,29 @@ Window {
             Drehschloss { id: aendernSchloss; anchors.horizontalCenter: parent.horizontalCenter; width: 260; height: 260; onEingerastet: (z) => tw.einrasten(z); onTick: tw.klang("klick") }
             Text { anchors.horizontalCenter: parent.horizontalCenter; text: tw.hinweis || "Drei Zahlen einrasten – danach zur Bestätigung noch einmal"
                    color: tw.fehlerAnzeige ? Theme.rot : Theme.text; font.family: Theme.schrift; font.pixelSize: 13 }
-            Knopf { anchors.horizontalCenter: parent.horizontalCenter; text: "Abbrechen"; art: "leise"; onGeklickt: { tw.aendernOffen = false; tw.modus = "oeffnen"; tw.zahlen = []; tw.hinweis = "" } }
+            Knopf { anchors.horizontalCenter: parent.horizontalCenter; text: "Abbrechen"; art: "leise"; onGeklickt: { tw.aendernOffen = false; tw.modus = "oeffnen"; tw.zahlen = []; tw.hinweis = ""; tw.vergessenPasswort = "" } }
+        }
+    }
+
+    // ════════ Code vergessen: mit dem Anmelde-Passwort einen neuen Code setzen ════════
+    Rectangle {
+        visible: tw.vergessenOffen
+        anchors.fill: parent
+        color: Qt.rgba(0, 0, 0, 0.86)
+        MouseArea { anchors.fill: parent }
+        Item {
+            anchors.centerIn: parent
+            width: Math.min(480, parent.width - 60); height: vergessenAbfrage.implicitHeight + 48
+            Fase { anchors.fill: parent; fase: 16; flaeche: Qt.rgba(17 / 255, 12 / 255, 5 / 255, 1); rand: Theme.gold_a(0.45) }
+            PasswortBestaetigung {
+                id: vergessenAbfrage
+                x: 24; y: 24; width: parent.width - 48
+                titel: "CODE VERGESSEN"
+                text: "Gib das Passwort ein, mit dem du dich bei Auriliux anmeldest (nur Administratoren). Danach wählst du am Drehschloss einen neuen Code. Deine Schnappschüsse und Sicherungen bleiben unverändert."
+                knopf: "Weiter"
+                onBestaetigt: (pw) => { tw.vergessenOffen = false; tw.vergessenPasswort = pw; tw.zahlen = []; tw.modus = "aendern"; tw.hinweis = ""; tw.aendernOffen = true; tastatur.forceActiveFocus() }
+                onAbgebrochen: { tw.vergessenOffen = false; leeren(); tastatur.forceActiveFocus() }
+            }
         }
     }
 

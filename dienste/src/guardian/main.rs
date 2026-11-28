@@ -518,7 +518,12 @@ impl Guardian {
     }
 
     // ── Aktionen auf Knopfdruck ──
-    fn aktion(&mut self, id: &str, aktion: &str, wer: u32) -> Result<String, String> {
+    /// Riskante Entscheidungen brauchen das Anmelde-Passwort eines Administrators
+    fn riskant(art: &str, aktion: &str) -> bool {
+        matches!((art, aktion), ("usb", "zulassen") | ("start", "freigeben") | ("erpresser", "fortsetzen") | ("autostart", "behalten") | ("autostart", "zurueck"))
+    }
+
+    fn aktion(&mut self, id: &str, aktion: &str, wer: u32, passwort: Option<&str>) -> Result<String, String> {
         let Some(i) = self.ereignisse.iter().position(|e| e.id == id) else { return Err("Unbekanntes Ereignis".into()) };
         let e = self.ereignisse[i].clone();
         if !e.erledigt.is_empty() {
@@ -529,6 +534,12 @@ impl Guardian {
         }
         if !e.knoepfe.iter().any(|(a, _)| a == aktion) {
             return Err("Diese Aktion gibt es hier nicht.".into());
+        }
+        if Self::riskant(&e.art, aktion) {
+            match passwort {
+                None => return Err("Bitte mit deinem Passwort bestätigen.".into()),
+                Some(p) => gemeinsam::passwort::pruefen(wer, p)?,
+            }
         }
         let ergebnis: Result<String, String> = match (e.art.as_str(), aktion) {
             ("usb", "zulassen") => usb::zulassen(&e.wert("nr")),
@@ -613,11 +624,21 @@ impl Guardian {
                 antwort_ok("Prüfung läuft")
             }
             _ if !vertraut => antwort_fehler("Nur die Auriliux-Oberfläche darf das."),
-            ["aktion", id, aktion] => match self.aktion(id, aktion, uid) {
+            ["aktion", id, aktion] => match self.aktion(id, aktion, uid, None) {
                 Ok(t) => antwort_ok(&t),
                 Err(f) => antwort_fehler(&f),
             },
-            ["quarantaene", id, was] => {
+            ["aktion", id, aktion, passwort] => match self.aktion(id, aktion, uid, Some(*passwort)) {
+                Ok(t) => antwort_ok(&t),
+                Err(f) => antwort_fehler(&f),
+            },
+            ["quarantaene", _, _] => antwort_fehler("Bitte mit deinem Passwort bestätigen."),
+            ["quarantaene", id, was, passwort] => {
+                if let Err(f) = gemeinsam::passwort::pruefen(uid, passwort) {
+                    let _ = (&s).write_all(antwort_fehler(&f).as_bytes());
+                    let _ = (&s).write_all(b"\n");
+                    return;
+                }
                 let r = match *was {
                     "zurueckholen" => self.q.zurueckholen(id, uid),
                     "loeschen" => self.q.loeschen(id, uid),

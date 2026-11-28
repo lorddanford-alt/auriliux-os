@@ -28,6 +28,40 @@ Window {
     property var angeheftet: []
     property bool homeAn: false
     property int fokusIndex: -1
+    // Umsortieren angehefteter Programme per Ziehen: Index des gezogenen Eintrags und Einfügeposition (Index in eintraege)
+    property int ziehVon: -1
+    property int ziehZiel: -1
+    function ziehbarAn(i) { const e = eintraege[i]; return !!e && e.art === "programm" && e.angeheftet }
+    function ziehen(i, fensterX) {
+        ziehVon = i
+        let ziel = -1, letzter = -1
+        for (let j = 0; j < eintraege.length; j++) {
+            if (!ziehbarAn(j)) continue
+            letzter = j
+            const it = kreisRepeater.itemAt(j)
+            if (!it) continue
+            const mitte = it.mapToItem(null, it.width / 2, 0).x
+            if (ziel < 0 && fensterX < mitte) ziel = j
+        }
+        ziehZiel = ziel >= 0 ? ziel : letzter + 1
+    }
+    function ziehenFertig() {
+        const von = ziehVon, ziel = ziehZiel
+        ziehVon = -1; ziehZiel = -1
+        if (von < 0 || ziel < 0 || ziel === von || ziel === von + 1) return
+        // neue Reihenfolge der angehefteten Programme aus der sichtbaren Reihenfolge
+        const reihe = []
+        let einfuegen = -1
+        for (let j = 0; j < eintraege.length; j++) {
+            if (j === ziel) einfuegen = reihe.length
+            if (ziehbarAn(j) && j !== von) reihe.push(eintraege[j].kennung)
+        }
+        if (einfuegen < 0) einfuegen = reihe.length
+        reihe.splice(einfuegen, 0, eintraege[von].kennung)
+        angeheftet = reihe
+        angeheftetSpeichern()
+        neuAufbauen()
+    }
     property int menueIndex: -1
     property int listeIndex: -1
     property string vorschau: System.umgebung("AURILIUX_VORSCHAU")
@@ -276,6 +310,18 @@ Window {
                             Behavior on faktor { NumberAnimation { duration: 90 } }
                             onGeklickt: dock.ausloesen(platz.index)
                             onRechtsklick: { dock.listeIndex = -1; dock.menueIndex = platz.index }
+                            ziehbar: dock.ziehbarAn(platz.index)
+                            opacity: dock.ziehVon === platz.index ? 0.45 : 1
+                            onZieht: (x) => dock.ziehen(platz.index, x)
+                            onLosgelassen: dock.ziehenFertig()
+                        }
+                        // goldene Einfügemarke beim Umsortieren
+                        Rectangle {
+                            visible: dock.ziehVon >= 0 && (dock.ziehZiel === platz.index || (dock.ziehZiel === platz.index + 1 && !dock.ziehbarAn(platz.index + 1) && dock.ziehbarAn(platz.index)))
+                            x: dock.ziehZiel === platz.index ? -dock.abstand / 2 - 1 : platz.width + dock.abstand / 2 - 1
+                            anchors.bottom: parent.bottom
+                            width: 3; height: 46; radius: 1
+                            color: Theme.goldHell
                         }
                     }
                 }
